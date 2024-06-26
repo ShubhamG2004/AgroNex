@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "53620171753",
+    "project_id": "agronex-6c8d0",
+    "storage_bucket": "agronex-6c8d0.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53620171753:android:de097dedc3a342bd5a6178",
+        "android_client_info": {
+          "package_name": "com.example.agronex"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "53620171753-v11qftsl52on1runb5jcqrd6utvq1lhh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.agronex",
+            "certificate_hash": "ebaaa831890d684ffcb6e406eae6fc82ac7ca85a"
+          }
+        },
+        {
+          "client_id": "53620171753-pj5eec5io35sto33dttqdljilof8ph0c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhy7Q8csVK9ImpqSyrIu2f8pfB4bR5jmM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "53620171753-pj5eec5io35sto33dttqdljilof8ph0c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
