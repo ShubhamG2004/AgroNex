@@ -94,6 +94,7 @@ class _LoginState extends State<Login> {
         ? Center(child: CircularProgressIndicator())
         : Scaffold(
       resizeToAvoidBottomInset: false,
+      backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -155,23 +156,40 @@ class _LoginState extends State<Login> {
                 SizedBox(height: 20),
                 Text('Or continue with'),
                 SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: Image.asset('assets/images/google.png', height: 40),
-                      iconSize: 50,
-                      onPressed: () => loginWithGoogle(),
+                GestureDetector(
+                  onTap: () => loginWithGoogle(),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.lightBlue[200], // Sky blue background color
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          spreadRadius: 1,
+                          blurRadius: 2,
+                          offset: Offset(0, 2), // changes position of shadow
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 20),
-                    IconButton(
-                      icon: Image.asset('assets/images/apple.png', height: 40),
-                      iconSize: 50,
-                      onPressed: () {
-                        // Add Apple Sign-In functionality here
-                      },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/google.png',
+                          height: 24,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Sign in with Google',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 20),
                 TextButton(
