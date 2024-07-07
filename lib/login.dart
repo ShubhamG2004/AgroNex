@@ -147,7 +147,7 @@ class _LoginState extends State<Login> {
                   onPressed: () => signIn(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFFC4EAFA), // Light sky blue background
-                    padding: EdgeInsets.symmetric(horizontal: 130, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 129, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
