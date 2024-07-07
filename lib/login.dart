@@ -147,14 +147,14 @@ class _LoginState extends State<Login> {
                   onPressed: () => signIn(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFFC4EAFA), // Light sky blue background
-                    padding: EdgeInsets.symmetric(horizontal: 129, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 120, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 5, // Add elevation for shadow
                     shadowColor: Colors.black.withOpacity(0.9), // Shadow color
                   ),
-                  child: Text('Sign In', style: TextStyle(color: Colors.black)),
+                  child: Text('Sign In', style: TextStyle(fontSize: 18, color: Colors.black)),
                 ),
                 SizedBox(height: 20),
                 Text('Or continue with'),
@@ -162,7 +162,7 @@ class _LoginState extends State<Login> {
                 GestureDetector(
                   onTap: () => loginWithGoogle(),
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.white, // White background color
                       borderRadius: BorderRadius.circular(8),
