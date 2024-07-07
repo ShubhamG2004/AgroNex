@@ -158,7 +158,7 @@ class _LoginState extends State<Login> {
                 ),
                 SizedBox(height: 20),
                 Text('Or continue with'),
-                SizedBox(height: 30),
+                SizedBox(height: 20),
                 GestureDetector(
                   onTap: () => loginWithGoogle(),
                   child: Container(
