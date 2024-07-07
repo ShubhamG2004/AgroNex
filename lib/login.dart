@@ -146,15 +146,15 @@ class _LoginState extends State<Login> {
                 ElevatedButton(
                   onPressed: () => signIn(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFA5C2CE), // Light sky blue background
+                    backgroundColor: Color(0xFFC4EAFA), // Light sky blue background
                     padding: EdgeInsets.symmetric(horizontal: 130, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 5, // Add elevation for shadow
-                    shadowColor: Colors.black.withOpacity(0.3), // Shadow color
+                    shadowColor: Colors.black.withOpacity(0.9), // Shadow color
                   ),
-                  child: Text('Sign In', style: TextStyle(color: Colors.white)),
+                  child: Text('Sign In', style: TextStyle(color: Colors.black)),
                 ),
                 SizedBox(height: 20),
                 Text('Or continue with'),
