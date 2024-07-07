@@ -146,12 +146,15 @@ class _LoginState extends State<Login> {
                 ElevatedButton(
                   onPressed: () => signIn(),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFA5C2CE), // Light sky blue background
                     padding: EdgeInsets.symmetric(horizontal: 130, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
+                    elevation: 5, // Add elevation for shadow
+                    shadowColor: Colors.black.withOpacity(0.3), // Shadow color
                   ),
-                  child: Text('Sign In'),
+                  child: Text('Sign In', style: TextStyle(color: Colors.white)),
                 ),
                 SizedBox(height: 20),
                 Text('Or continue with'),
@@ -161,11 +164,11 @@ class _LoginState extends State<Login> {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.lightBlue[200], // Sky blue background color
+                      color: Colors.white, // White background color
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.black.withOpacity(0.3),
                           spreadRadius: 1,
                           blurRadius: 2,
                           offset: Offset(0, 2), // changes position of shadow
