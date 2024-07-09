@@ -91,8 +91,8 @@ class _HomepageState extends State<Homepage> {
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed, // To keep all items visible
-        selectedFontSize: 10,
-        unselectedFontSize: 13,
+        selectedFontSize: 12,
+        unselectedFontSize: 11,
         selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), //  bold
       ),
     );
