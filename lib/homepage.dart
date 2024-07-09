@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'login.dart';
 
 class Homepage extends StatefulWidget {
-  const Homepage({super.key});
+  const Homepage({Key? key}) : super(key: key);
 
   @override
   State<Homepage> createState() => _HomepageState();
@@ -16,7 +16,9 @@ class _HomepageState extends State<Homepage> {
 
   signout() async {
     await FirebaseAuth.instance.signOut();
-    await GoogleSignIn().signOut(); // Ensure you have a named route for the login page
+    await GoogleSignIn().signOut();
+    // Ensure you have a named route for the login page
+    Navigator.pushReplacementNamed(context, '/login'); // Example of navigation to login page
   }
 
   void _onItemTapped(int index) {
@@ -47,26 +49,41 @@ class _HomepageState extends State<Homepage> {
         child: Icon(Icons.logout),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 28),
+            icon: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Icon(Icons.home, size: 24),
+            ),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search, size: 28),
+            icon: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Icon(Icons.search, size: 24),
+            ),
             label: 'Search',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle, size: 36), // Larger icon for the center button
-            label: 'Add',
+            icon: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Icon(Icons.add_circle, size: 32),
+            ),
+            label: 'Post',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.message, size: 28),
-            label: 'Messages',
+            icon: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Icon(Icons.library_books, size: 24),
+            ),
+            label: 'Blog',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings, size: 28),
-            label: 'Settings',
+            icon: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Icon(Icons.notifications, size: 24),
+            ),
+            label: 'Notification',
           ),
         ],
         currentIndex: _selectedIndex,
@@ -74,9 +91,9 @@ class _HomepageState extends State<Homepage> {
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed, // To keep all items visible
-        selectedFontSize: 10, // Decrease font size for selected item
-        unselectedFontSize: 12, // Decrease font size for unselected items
-        iconSize: 20, // Decrease icon size
+        selectedFontSize: 10,
+        unselectedFontSize: 13,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), //  bold
       ),
     );
   }
