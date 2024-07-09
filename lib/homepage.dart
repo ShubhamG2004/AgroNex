@@ -12,6 +12,15 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   final user = FirebaseAuth.instance.currentUser;
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    // Handle navigation based on the index
+    // Example: if (index == 0) { navigate to Home }
+  }
 
   signout() async {
     await FirebaseAuth.instance.signOut();
@@ -38,6 +47,40 @@ class _HomepageState extends State<Homepage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => signout(),
         child: Icon(Icons.logout),
+      ),
+      bottomNavigationBar: Container(
+        height: 60, // Decrease the height of the navbar
+        child: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search),
+              label: 'Search',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle, size: 40), // Adjusted size for the add button
+              label: 'Post',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.message),
+              label: 'Blog',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Notification',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.black,
+          onTap: _onItemTapped,
+          iconSize: 24, // Adjust the icon size
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+        ),
       ),
     );
   }
