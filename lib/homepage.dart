@@ -17,8 +17,7 @@ class _HomepageState extends State<Homepage> {
   signout() async {
     await FirebaseAuth.instance.signOut();
     await GoogleSignIn().signOut();
-    // Ensure you have a named route for the login page
-    Navigator.pushReplacementNamed(context, '/login'); // Example of navigation to login page
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   void _onItemTapped(int index) {

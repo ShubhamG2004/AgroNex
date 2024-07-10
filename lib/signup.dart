@@ -1,9 +1,8 @@
+import 'package:agronex/AdditionalInfoScreen.dart';
 import 'package:agronex/wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
-
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -22,10 +21,11 @@ class _SignupState extends State<Signup> {
         email: email.text,
         password: password.text,
       );
-      Get.offAll(Wrapper()); // Navigate to the Wrapper screen after signup
+
+      Get.to(() => AdditionalInfoScreen(user: userCredential.user!));
     } on FirebaseAuthException catch (e) {
-      // Handle errors here
-      print(e.message);
+      Get.snackbar('Error', e.message ?? 'An error occurred',
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 

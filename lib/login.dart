@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'signup.dart';
 import 'forgot.dart';
+import 'AdditionalInfoScreen.dart';
+import 'wrapper.dart';
 
 class Login extends StatefulWidget {
   const Login({Key? key}) : super(key: key);
@@ -18,10 +21,16 @@ class _LoginState extends State<Login> {
   bool isLoading = false;
 
   Future<void> loginWithGoogle() async {
+    setState(() {
+      isLoading = true;
+    });
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
         // User cancelled the sign-in
+        setState(() {
+          isLoading = false;
+        });
         return;
       }
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -31,39 +40,9 @@ class _LoginState extends State<Login> {
         idToken: googleAuth.idToken,
       );
 
-      await FirebaseAuth.instance.signInWithCredential(credential);
-    } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString(),
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        duration: Duration(seconds: 3),
-        margin: EdgeInsets.all(10),
-      );
-    }
-  }
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
 
-  Future<void> signIn() async {
-    setState(() {
-      isLoading = true;
-    });
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.text,
-        password: password.text,
-      );
-    } on FirebaseAuthException catch (e) {
-      Get.snackbar(
-        "Error",
-        e.message ?? "An error occurred",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        duration: Duration(seconds: 3),
-        margin: EdgeInsets.all(10),
-      );
+      await checkAdditionalInfo(userCredential.user!);
     } catch (e) {
       Get.snackbar(
         "Error",
@@ -78,6 +57,43 @@ class _LoginState extends State<Login> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> signIn() async {
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.text,
+        password: password.text,
+      );
+
+      await checkAdditionalInfo(userCredential.user!);
+    } on FirebaseAuthException catch (e) {
+      Get.snackbar(
+        "Error",
+        e.message ?? "An error occurred",
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        duration: Duration(seconds: 3),
+        margin: EdgeInsets.all(10),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> checkAdditionalInfo(User user) async {
+    DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    if (doc.exists && doc.data() != null) {
+      Get.offAll(() => Wrapper());
+    } else {
+      Get.to(() => AdditionalInfoScreen(user: user));
     }
   }
 
