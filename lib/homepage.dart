@@ -17,7 +17,10 @@ class _HomepageState extends State<Homepage> {
   signout() async {
     await FirebaseAuth.instance.signOut();
     await GoogleSignIn().signOut();
-    Navigator.pushReplacementNamed(context, '/login');
+    if (mounted) {
+      // Ensure you have a named route for the login page
+      Navigator.pushReplacementNamed(context, '/login'); // Example of navigation to login page
+    }
   }
 
   void _onItemTapped(int index) {
@@ -92,7 +95,7 @@ class _HomepageState extends State<Homepage> {
         type: BottomNavigationBarType.fixed, // To keep all items visible
         selectedFontSize: 12,
         unselectedFontSize: 11,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), //  bold
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), // bold
       ),
     );
   }

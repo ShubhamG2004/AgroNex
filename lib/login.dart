@@ -42,6 +42,9 @@ class _LoginState extends State<Login> {
 
       UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
 
+      // Save the user data to Firestore
+      await saveUserData(userCredential.user!, googleUser);
+
       await checkAdditionalInfo(userCredential.user!);
     } catch (e) {
       Get.snackbar(
@@ -94,6 +97,28 @@ class _LoginState extends State<Login> {
       Get.offAll(() => Wrapper());
     } else {
       Get.to(() => AdditionalInfoScreen(user: user));
+    }
+  }
+
+  Future<void> saveUserData(User user, GoogleSignInAccount googleUser) async {
+    DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+    DocumentSnapshot doc = await userRef.get();
+    if (!doc.exists) {
+      String displayName = googleUser.displayName ?? '';
+      List<String> nameParts = displayName.split(' ');
+      String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
+      String lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      // Create a new user document
+      await userRef.set({
+        'uid': user.uid,
+        'email': user.email,
+        'firstName': firstName,
+        'lastName': lastName,
+        'photoURL': googleUser.photoUrl,
+        // Add any additional fields you want to save
+      });
     }
   }
 
