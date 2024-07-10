@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 
 class Homepage extends StatefulWidget {
@@ -13,12 +14,27 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   final user = FirebaseAuth.instance.currentUser;
   int _selectedIndex = 0;
+  Map<String, dynamic>? userData;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    if (user != null) {
+      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+      setState(() {
+        userData = doc.data() as Map<String, dynamic>?;
+      });
+    }
+  }
 
   signout() async {
     await FirebaseAuth.instance.signOut();
     await GoogleSignIn().signOut();
     if (mounted) {
-      // Ensure you have a named route for the login page
       Navigator.pushReplacementNamed(context, '/login'); // Example of navigation to login page
     }
   }
@@ -44,7 +60,33 @@ class _HomepageState extends State<Homepage> {
         ],
       ),
       body: Center(
-        child: Text('${user!.email}'),
+        child: userData != null
+            ? Card(
+          elevation: 4,
+          margin: EdgeInsets.all(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: userData!['photoURL'] != null
+                      ? NetworkImage(userData!['photoURL'])
+                      : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '${userData!['firstName']} ${userData!['lastName']}',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(userData!['email']),
+              ],
+            ),
+          ),
+        )
+            : CircularProgressIndicator(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => signout(),

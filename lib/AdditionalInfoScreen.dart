@@ -19,13 +19,24 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
 
   Future<void> saveAdditionalInfo() async {
     try {
+      String firstName = nameController.text;
+      String lastName = surnameController.text;
+      String photoUrl = widget.user.photoURL ?? '';
+
+      if (photoUrl.isEmpty) {
+        photoUrl = 'https://via.placeholder.com/150?text=${firstName[0]}';
+      }
+
       await FirebaseFirestore.instance.collection('users').doc(widget.user.uid).set({
-        'name': nameController.text,
-        'surname': surnameController.text,
+        'firstName': firstName,
+        'lastName': lastName,
         'email': widget.user.email,
+        'uid': widget.user.uid,
+        'photoURL': photoUrl,
         'timestamp': FieldValue.serverTimestamp(),
       });
-      Get.offAll(Wrapper()); // Navigate to Wrapper screen
+
+      Get.offAll(() => Wrapper()); // Navigate to Wrapper screen
     } catch (e) {
       Get.snackbar('Error', 'Failed to save information: $e',
           backgroundColor: Colors.red, colorText: Colors.white);

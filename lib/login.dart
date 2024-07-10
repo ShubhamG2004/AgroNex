@@ -28,9 +28,11 @@ class _LoginState extends State<Login> {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
         // User cancelled the sign-in
-        setState(() {
-          isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
         return;
       }
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -47,19 +49,23 @@ class _LoginState extends State<Login> {
 
       await checkAdditionalInfo(userCredential.user!);
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString(),
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        duration: Duration(seconds: 3),
-        margin: EdgeInsets.all(10),
-      );
+      if (mounted) {
+        Get.snackbar(
+          "Error",
+          e.toString(),
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: Duration(seconds: 3),
+          margin: EdgeInsets.all(10),
+        );
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -75,19 +81,23 @@ class _LoginState extends State<Login> {
 
       await checkAdditionalInfo(userCredential.user!);
     } on FirebaseAuthException catch (e) {
-      Get.snackbar(
-        "Error",
-        e.message ?? "An error occurred",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        duration: Duration(seconds: 3),
-        margin: EdgeInsets.all(10),
-      );
+      if (mounted) {
+        Get.snackbar(
+          "Error",
+          e.message ?? "An error occurred",
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: Duration(seconds: 3),
+          margin: EdgeInsets.all(10),
+        );
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -117,6 +127,7 @@ class _LoginState extends State<Login> {
         'firstName': firstName,
         'lastName': lastName,
         'photoURL': googleUser.photoUrl,
+        'timestamp': FieldValue.serverTimestamp(),
         // Add any additional fields you want to save
       });
     }
