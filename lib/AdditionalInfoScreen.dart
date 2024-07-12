@@ -30,10 +30,14 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
       await FirebaseFirestore.instance.collection('users').doc(widget.user.uid).set({
         'firstName': firstName,
         'lastName': lastName,
-        'email': widget.user.email,
+        'Pronouns':'',
+        'Position':'',
         'uid': widget.user.uid,
         'photoURL': photoUrl,
         'timestamp': FieldValue.serverTimestamp(),
+        'email': widget.user.email,
+        'number':'',
+        'address':'',
       });
 
       Get.offAll(() => Wrapper()); // Navigate to Wrapper screen

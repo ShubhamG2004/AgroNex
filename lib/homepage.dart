@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
+import 'profile/ProfilePage.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({Key? key}) : super(key: key);
@@ -25,9 +26,11 @@ class _HomepageState extends State<Homepage> {
   Future<void> fetchUserData() async {
     if (user != null) {
       DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
-      setState(() {
-        userData = doc.data() as Map<String, dynamic>?;
-      });
+      if (mounted) {
+        setState(() {
+          userData = doc.data() as Map<String, dynamic>?;
+        });
+      }
     }
   }
 
@@ -54,7 +57,10 @@ class _HomepageState extends State<Homepage> {
           IconButton(
             icon: Icon(Icons.account_circle),
             onPressed: () {
-              // Add navigation to profile page or any other action
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfilePage()),
+              );
             },
           ),
         ],

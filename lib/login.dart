@@ -123,11 +123,15 @@ class _LoginState extends State<Login> {
       // Create a new user document
       await userRef.set({
         'uid': user.uid,
-        'email': user.email,
         'firstName': firstName,
         'lastName': lastName,
+        'Pronouns':'',
+        'Position':'',
         'photoURL': googleUser.photoUrl,
         'timestamp': FieldValue.serverTimestamp(),
+        'email': user.email,
+        'number':'',
+        'address':'',
         // Add any additional fields you want to save
       });
     }
