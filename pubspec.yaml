@@ -18,6 +18,8 @@ dependencies:
   google_sign_in: ^6.2.1
   persistent_bottom_nav_bar: ^5.0.2
   cloud_firestore: ^5.1.0
+  image_picker: ^0.8.4+4
+  firebase_storage: ^12.1.1
 
 dev_dependencies:
   flutter_test:
