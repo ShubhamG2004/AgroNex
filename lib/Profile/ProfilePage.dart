@@ -66,6 +66,28 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  void showProfileImageDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                fit: BoxFit.cover,
+                image: userData!['photoURL'] != null
+                    ? NetworkImage(userData!['photoURL'])
+                    : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,19 +106,19 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: const EdgeInsets.all(5.0),
           child: Column(
             children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: userData!['photoURL'] != null
-                        ? NetworkImage(userData!['photoURL'])
-                        : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 10,
-                    child: GestureDetector(
-                      onTap: pickImage,
+              GestureDetector(
+                onTap: showProfileImageDialog,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundImage: userData!['photoURL'] != null
+                          ? NetworkImage(userData!['photoURL'])
+                          : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 10,
                       child: Container(
                         width: 30,
                         height: 30,
@@ -111,8 +133,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               SizedBox(height: 16),
               Container(
