@@ -72,8 +72,8 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (BuildContext context) {
         return Dialog(
           child: Container(
-            width: 200,
-            height: 200,
+            width: 1500,
+            height: 350,
             decoration: BoxDecoration(
               image: DecorationImage(
                 fit: BoxFit.cover,
