@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img; // Import image package
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -40,12 +41,24 @@ class _ProfilePageState extends State<ProfilePage> {
       final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
       if (pickedFile != null) {
-        File image = File(pickedFile.path);
+        File imageFile = File(pickedFile.path);
+
+        // Resize the image using the image package
+        final bytes = await imageFile.readAsBytes();
+        img.Image? image = img.decodeImage(bytes);
+        img.Image resizedImage = img.copyResize(image!, width: 300); // Resize width to 300 pixels
+        File resizedFile = File(imageFile.path)
+          ..writeAsBytesSync(img.encodeJpg(resizedImage)); // Convert to jpg and save as file
+
         String fileName = '${user!.uid}.jpg';
         try {
-          await FirebaseStorage.instance.ref('profile_images/$fileName').putFile(image);
+          // Upload resized image to Firebase Storage
+          await FirebaseStorage.instance.ref('profile_images/$fileName').putFile(resizedFile);
           String photoURL = await FirebaseStorage.instance.ref('profile_images/$fileName').getDownloadURL();
+
+          // Update Firestore with resized image URL
           await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({'photoURL': photoURL});
+
           setState(() {
             userData!['photoURL'] = photoURL;
           });
@@ -72,8 +85,8 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (BuildContext context) {
         return Dialog(
           child: Container(
-            width: 1500,
-            height: 350,
+            width: 300,
+            height: 300,
             decoration: BoxDecoration(
               image: DecorationImage(
                 fit: BoxFit.cover,
@@ -86,6 +99,89 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       },
     );
+  }
+
+  void showEditOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.image),
+                title: Text('View Image'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showProfileImageDialog();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.edit),
+                title: Text('Edit Image'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await pickImage();
+                  showImageEditOptions();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void showImageEditOptions() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Image'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => resizeImage(),
+                child: Text('Resize Image'),
+              ),
+              TextButton(
+                onPressed: () => changeImageColor(),
+                child: Text('Change Color'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await saveImageEdits();
+                Navigator.of(context).pop();
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> resizeImage() async {
+    // Implement image resizing logic here
+    // ...
+  }
+
+  Future<void> changeImageColor() async {
+    // Implement image color changing logic here
+    // ...
+  }
+
+  Future<void> saveImageEdits() async {
+    // Implement logic to save the edited image to Firebase Storage and Firestore
+    // ...
   }
 
   @override
@@ -107,7 +203,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               GestureDetector(
-                onTap: showProfileImageDialog,
+                onTap: showEditOptions, // Show options to view or edit image
                 child: Stack(
                   children: [
                     CircleAvatar(
