@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image/image.dart' as img; // Import image package
+import 'package:image/image.dart' as img;
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -15,7 +15,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final user = FirebaseAuth.instance.currentUser;
+  final User? user = FirebaseAuth.instance.currentUser;
   Map<String, dynamic>? userData;
   final ImagePicker _picker = ImagePicker();
 
@@ -27,7 +27,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> fetchUserData() async {
     if (user != null) {
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+      DocumentSnapshot doc =
+      await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
       if (mounted) {
         setState(() {
           userData = doc.data() as Map<String, dynamic>?;
@@ -46,18 +47,22 @@ class _ProfilePageState extends State<ProfilePage> {
         // Resize the image using the image package
         final bytes = await imageFile.readAsBytes();
         img.Image? image = img.decodeImage(bytes);
-        img.Image resizedImage = img.copyResize(image!, width: 300); // Resize width to 300 pixels
+        img.Image resizedImage = img.copyResize(image!, width: 300);
         File resizedFile = File(imageFile.path)
-          ..writeAsBytesSync(img.encodeJpg(resizedImage)); // Convert to jpg and save as file
+          ..writeAsBytesSync(img.encodeJpg(resizedImage));
 
         String fileName = '${user!.uid}.jpg';
         try {
           // Upload resized image to Firebase Storage
           await FirebaseStorage.instance.ref('profile_images/$fileName').putFile(resizedFile);
-          String photoURL = await FirebaseStorage.instance.ref('profile_images/$fileName').getDownloadURL();
+          String photoURL =
+          await FirebaseStorage.instance.ref('profile_images/$fileName').getDownloadURL();
 
           // Update Firestore with resized image URL
-          await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({'photoURL': photoURL});
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user!.uid)
+              .update({'photoURL': photoURL});
 
           setState(() {
             userData!['photoURL'] = photoURL;
@@ -68,6 +73,23 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       print('Error picking image: $e');
+    }
+  }
+
+  Future<void> deleteImage() async {
+    if (userData!['photoURL'] != null) {
+      try {
+        await FirebaseStorage.instance.refFromURL(userData!['photoURL']).delete();
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .update({'photoURL': FieldValue.delete()});
+        setState(() {
+          userData!.remove('photoURL');
+        });
+      } catch (e) {
+        print('Error deleting image: $e');
+      }
     }
   }
 
@@ -83,8 +105,8 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          child: Container(
+        return AlertDialog(
+          content: Container(
             width: 300,
             height: 300,
             decoration: BoxDecoration(
@@ -96,6 +118,26 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                showEditOptions();
+              },
+              child: Text('Edit'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                deleteImage();
+              },
+              child: Text('Delete'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Close'),
+            ),
+          ],
         );
       },
     );
@@ -122,7 +164,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () async {
                   Navigator.pop(context);
                   await pickImage();
-                  showImageEditOptions();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete),
+                title: Text('Delete Image'),
+                onTap: () {
+                  Navigator.pop(context);
+                  deleteImage();
                 },
               ),
             ],
@@ -130,58 +179,6 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       },
     );
-  }
-
-  void showImageEditOptions() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Image'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                onPressed: () => resizeImage(),
-                child: Text('Resize Image'),
-              ),
-              TextButton(
-                onPressed: () => changeImageColor(),
-                child: Text('Change Color'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await saveImageEdits();
-                Navigator.of(context).pop();
-              },
-              child: Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> resizeImage() async {
-    // Implement image resizing logic here
-    // ...
-  }
-
-  Future<void> changeImageColor() async {
-    // Implement image color changing logic here
-    // ...
-  }
-
-  Future<void> saveImageEdits() async {
-    // Implement logic to save the edited image to Firebase Storage and Firestore
-    // ...
   }
 
   @override
@@ -203,7 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               GestureDetector(
-                onTap: showEditOptions, // Show options to view or edit image
+                onTap: showEditOptions,
                 child: Stack(
                   children: [
                     CircleAvatar(
@@ -237,25 +234,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 width: double.infinity,
                 child: CustomCard(
                   title: 'Personal Details',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            '${userData!['firstName']} ',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '${userData!['lastName']}',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      Text('Position: ${userData!['Position'] ?? ''}'),
-                      Text('About: ${userData!['About'] ?? ''}'),
-                    ],
-                  ),
+                  userData: userData ?? {},
+                  onUpdate: (updatedData) {
+                    setState(() {
+                      userData?.addAll(updatedData);
+                    });
+                  },
+                  user: user, // Pass user object here
                 ),
               ),
               SizedBox(height: 16),
@@ -263,14 +248,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 width: double.infinity,
                 child: CustomCard(
                   title: 'Contact Details',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Email: ${userData!['email']}'),
-                      Text('Mobile: ${userData!['Mobile'] ?? ''}'),
-                      Text('Address: ${userData!['Address'] ?? ''}'),
-                    ],
-                  ),
+                  userData: userData ?? {},
+                  onUpdate: (updatedData) {
+                    setState(() {
+                      userData?.addAll(updatedData);
+                    });
+                  },
+                  user: user, // Pass user object here
                 ),
               ),
               SizedBox(height: 16),
@@ -278,14 +262,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 width: double.infinity,
                 child: CustomCard(
                   title: 'Resources',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Blog: ${userData!['Blog'] ?? ''}'),
-                      Text('Product: ${userData!['Product'] ?? ''}'),
-                      Text('Research: ${userData!['Research'] ?? ''}'),
-                    ],
-                  ),
+                  userData: userData ?? {},
+                  onUpdate: (updatedData) {
+                    setState(() {
+                      userData?.addAll(updatedData);
+                    });
+                  },
+                  user: user, // Pass user object here
                 ),
               ),
             ],
@@ -299,11 +282,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
 class CustomCard extends StatelessWidget {
   final String title;
-  final Widget child;
+  final Map<String, dynamic> userData;
+  final Function(Map<String, dynamic>) onUpdate;
+  final User? user;
 
   const CustomCard({
     required this.title,
-    required this.child,
+    required this.userData,
+    required this.onUpdate,
+    required this.user,
   });
 
   @override
@@ -314,28 +301,102 @@ class CustomCard extends StatelessWidget {
         margin: EdgeInsets.symmetric(vertical: 8),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  child,
+                  GestureDetector(
+                    onTap: () => showEditPersonalDetailsDialog(context),
+                    child: Icon(Icons.edit_outlined, color: Colors.black),
+                  ),
                 ],
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Icon(
-                  Icons.edit_outlined,
-                  color: Colors.black,
-                ),
+              SizedBox(height: 8),
+              Text(
+                '${userData['firstName']} ${userData['lastName']}',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
+              Text('Position: ${userData['Position'] ?? ''}'),
+              Text('About: ${userData['About'] ?? ''}'),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void showEditPersonalDetailsDialog(BuildContext context) {
+    String firstName = userData['firstName'];
+    String lastName = userData['lastName'];
+    String position = userData['Position'] ?? '';
+    String about = userData['About'] ?? '';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Personal Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextFormField(
+                  initialValue: firstName,
+                  decoration: InputDecoration(labelText: 'First Name'),
+                  onChanged: (value) => firstName = value,
+                ),
+                TextFormField(
+                  initialValue: lastName,
+                  decoration: InputDecoration(labelText: 'Last Name'),
+                  onChanged: (value) => lastName = value,
+                ),
+                TextFormField(
+                  initialValue: position,
+                  decoration: InputDecoration(labelText: 'Position'),
+                  onChanged: (value) => position = value,
+                ),
+                TextFormField(
+                  initialValue: about,
+                  decoration: InputDecoration(labelText: 'About'),
+                  onChanged: (value) => about = value,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Update Firestore with new data
+                Map<String, dynamic> updatedData = {
+                  'firstName': firstName,
+                  'lastName': lastName,
+                  'Position': position,
+                  'About': about,
+                };
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user!.uid)
+                    .update(updatedData);
+
+                // Update UI
+                onUpdate(updatedData);
+
+                Navigator.of(context).pop();
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
