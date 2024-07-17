@@ -58,9 +58,6 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Follower'),
-      ),
       body: Center(
         child: isLoading
             ? CircularProgressIndicator()

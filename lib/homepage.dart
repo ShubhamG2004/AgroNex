@@ -16,6 +16,7 @@ class _HomepageState extends State<Homepage> {
   final user = FirebaseAuth.instance.currentUser;
   int _selectedIndex = 0;
   Map<String, dynamic>? userData;
+  PageController _pageController = PageController();
 
   @override
   void initState() {
@@ -43,15 +44,16 @@ class _HomepageState extends State<Homepage> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ConnectionsPage()),
-      );
+    if (index == 2) {
+      // Handle post action
+      // You can navigate to a different screen or show a dialog
+      // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => PostPage()));
+      return;
     } else {
       setState(() {
         _selectedIndex = index;
       });
+      _pageController.jumpToPage(index);
     }
   }
 
@@ -72,34 +74,48 @@ class _HomepageState extends State<Homepage> {
           ),
         ],
       ),
-      body: Center(
-        child: userData != null
-            ? Card(
-          elevation: 4,
-          margin: EdgeInsets.all(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundImage: userData!['photoURL'] != null
-                      ? NetworkImage(userData!['photoURL'])
-                      : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        children: [
+          Center(
+            child: userData != null
+                ? Card(
+              elevation: 4,
+              margin: EdgeInsets.all(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundImage: userData!['photoURL'] != null
+                          ? NetworkImage(userData!['photoURL'])
+                          : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      '${userData!['firstName']} ${userData!['lastName']}',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(userData!['email']),
+                  ],
                 ),
-                SizedBox(height: 16),
-                Text(
-                  '${userData!['firstName']} ${userData!['lastName']}',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text(userData!['email']),
-              ],
-            ),
+              ),
+            )
+                : CircularProgressIndicator(),
           ),
-        )
-            : CircularProgressIndicator(),
+          ConnectionsPage(),
+          Center(child: Text('Placeholder for Post Page')), // Placeholder for Post page
+          Center(child: Text('Blog Page')), // Placeholder for Blog page
+          Center(child: Text('Notifications Page')), // Placeholder for Notifications page
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => signout(),
@@ -144,7 +160,7 @@ class _HomepageState extends State<Homepage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed, // To keep all items visible
