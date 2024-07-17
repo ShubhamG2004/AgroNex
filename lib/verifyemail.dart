@@ -1,22 +1,19 @@
-import 'package:agronex/homepage.dart';
-import 'package:agronex/wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
-
+import 'package:agronex/homepage.dart';
+import 'package:agronex/wrapper.dart';
 
 class Verify extends StatefulWidget {
-  const Verify({super.key});
+  const Verify({Key? key});
 
   @override
   State<Verify> createState() => _VerifyState();
 }
 
 class _VerifyState extends State<Verify> {
-
   @override
-  void initState(){
+  void initState() {
     super.initState();
     sendVerifyLink();
   }
@@ -25,12 +22,15 @@ class _VerifyState extends State<Verify> {
     final user = FirebaseAuth.instance.currentUser!;
     try {
       await user.sendEmailVerification();
-      Get.snackbar('Link Sent', 'A verification link has been sent to your email.', margin: EdgeInsets.all(30), snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('Link Sent', 'A verification link has been sent to your email.',
+          margin: EdgeInsets.all(30), snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       if (e is FirebaseAuthException && e.code == 'too-many-requests') {
-        Get.snackbar('Error', 'Too many requests. Please try again later.', margin: EdgeInsets.all(30), snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', 'Too many requests. Please try again later.',
+            margin: EdgeInsets.all(30), snackPosition: SnackPosition.BOTTOM);
       } else {
-        Get.snackbar('Error', e.toString(), margin: EdgeInsets.all(30), snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', e.toString(), margin: EdgeInsets.all(30),
+            snackPosition: SnackPosition.BOTTOM);
       }
     }
   }
@@ -43,6 +43,16 @@ class _VerifyState extends State<Verify> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Verify Email'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            // Navigate back to previous screen
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
