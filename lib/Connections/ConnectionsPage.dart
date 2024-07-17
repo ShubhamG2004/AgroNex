@@ -79,7 +79,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
               },
               child: Card(
                 color: Colors.white,
-                elevation: 5,
+                elevation: 4,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16.0), // Increased radius for a more rounded corner
                 ),
@@ -90,13 +90,14 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                     children: [
                       Container(
                         width: double.infinity, // Set the width to the maximum available
-                        height: 90,
+                        height: 100,
                         alignment: Alignment.center, // Center the child horizontally
                         child: Container(
-                          width: 90,
-                          height: 80,
+                          width: 100,
+                          height: 100,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 2),
                             image: DecorationImage(
                               fit: BoxFit.cover,
                               image: user.photoURL.isNotEmpty
@@ -106,7 +107,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: 11),
                       Text(
                         '${user.firstName} ${user.lastName}',
                         textAlign: TextAlign.center, // Center the text
@@ -123,7 +124,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                           color: Colors.grey[600],
                         ),
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 3),
                       Text(
                         '${user.mutualFollowers} mutual connections',
                         textAlign: TextAlign.center, // Center the text
