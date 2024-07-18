@@ -136,6 +136,7 @@ class _HomepageState extends State<Homepage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: Colors.white,
           border: Border(
             top: BorderSide(color: Colors.grey, width: 0.5), // Top border
           ),
