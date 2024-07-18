@@ -60,19 +60,32 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Image.asset('assets/images/logo.png', height: 40),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.account_circle),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ProfilePage()),
-              );
-            },
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(50.0), // Adjusted height
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white, // Set background color of the AppBar to white
+            border: Border(
+              bottom: BorderSide(color: Colors.grey, width: 0.5), // Bottom border
+            ),
           ),
-        ],
+          child: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: Image.asset('assets/images/logo.png', height: 30),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.account_circle, color: Colors.black),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProfilePage()),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
       body: PageView(
         controller: _pageController,
@@ -131,36 +144,36 @@ class _HomepageState extends State<Homepage> {
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Icon(Icons.home, size: 24),
+                padding: const EdgeInsets.symmetric(vertical: 1.0),
+                child: Icon(Icons.home, size: 22),
               ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Icon(Icons.search, size: 24),
+                padding: const EdgeInsets.symmetric(vertical: 1.0),
+                child: Icon(Icons.search, size: 22),
               ),
               label: 'Search',
             ),
             BottomNavigationBarItem(
               icon: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Icon(Icons.add_circle, size: 32),
+                padding: const EdgeInsets.symmetric(vertical: 1.0),
+                child: Icon(Icons.add_circle, size: 30),
               ),
               label: 'Post',
             ),
             BottomNavigationBarItem(
               icon: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Icon(Icons.library_books, size: 24),
+                padding: const EdgeInsets.symmetric(vertical: 1.0),
+                child: Icon(Icons.library_books, size: 22),
               ),
               label: 'Blog',
             ),
             BottomNavigationBarItem(
               icon: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Icon(Icons.notifications, size: 24),
+                child: Icon(Icons.notifications, size: 22),
               ),
               label: 'Notification',
             ),
@@ -171,7 +184,7 @@ class _HomepageState extends State<Homepage> {
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed, // To keep all items visible
           selectedFontSize: 12,
-          unselectedFontSize: 11,
+          unselectedFontSize: 10,
           selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), // bold
         ),
       ),
