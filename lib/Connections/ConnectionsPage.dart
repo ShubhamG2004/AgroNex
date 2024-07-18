@@ -30,9 +30,8 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
         await FirebaseFirestore.instance.collection('users').get();
 
         // Create a list of user models from the snapshot
-        List<UserModel> fetchedUsers = snapshot.docs
-            .map((doc) => UserModel.fromDocument(doc))
-            .toList();
+        List<UserModel> fetchedUsers =
+        snapshot.docs.map((doc) => UserModel.fromDocument(doc)).toList();
 
         // Update the user list in the UI
         setState(() {
@@ -65,106 +64,110 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             ? GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            crossAxisSpacing: 5.0,
-            mainAxisSpacing: 8.0,
-            childAspectRatio: 0.74, // Adjust the aspect ratio to increase the height of the cards
+            crossAxisSpacing: 2.0,
+            mainAxisSpacing: 1.0,
+            childAspectRatio: 0.74,
           ),
           itemCount: users.length,
           itemBuilder: (context, index) {
             UserModel user = users[index];
-            return GestureDetector(
-              onTap: () {
-                // Handle card tap
-                debugPrint('Card tapped for ${user.firstName} ${user.lastName}');
-              },
-              child: Card(
-                color: Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0), // Increased radius for a more rounded corner
-                ),
-                child: Container(
-                  padding: EdgeInsets.all(16.0), // Increased padding for a more spacious design
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center, // Center the content
-                    children: [
-                      Container(
-                        width: double.infinity, // Set the width to the maximum available
-                        height: 100,
-                        alignment: Alignment.center, // Center the child horizontally
-                        child: Container(
-                          width: 100,
+            return Padding(
+              padding: EdgeInsets.only(
+                left: index % 2 == 0 ? 1.50 : 1.50,
+                right: index % 2 == 0 ? 1.50 : 1.50,
+                top: 1.50,
+                bottom: 1.50,
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  // Handle card tap
+                  debugPrint(
+                      'Card tapped for ${user.firstName} ${user.lastName}');
+                },
+                child: Card(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    side: BorderSide(color: Colors.grey, width: 0.5),
+                  ),
+                  child: Container(
+                    padding: EdgeInsets.all(16.0), // Increased padding for a more spacious design
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center, // Center the content
+                      children: [
+                        Container(
+                          width: double.infinity, // Set the width to the maximum available
                           height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 2),
-                            image: DecorationImage(
-                              fit: BoxFit.cover,
-                              image: user.photoURL.isNotEmpty
-                                  ? NetworkImage(user.photoURL)
-                                  : AssetImage('assets/images/default_avatar.png'),
+                          alignment: Alignment.center, // Center the child horizontally
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.green, width: 0.8),
+                              image: DecorationImage(
+                                fit: BoxFit.cover,
+                                image: user.photoURL.isNotEmpty
+                                    ? NetworkImage(user.photoURL)
+                                    : AssetImage('assets/images/default_avatar.png'),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 11),
-                      Text(
-                        '${user.firstName} ${user.lastName}',
-                        textAlign: TextAlign.center, // Center the text
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${user.position}', // Display position
-                        textAlign: TextAlign.center, // Center the text
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        '${user.mutualFollowers} mutual connections',
-                        textAlign: TextAlign.center, // Center the text
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Spacer(),
-                      // Follow button with a rounded rectangle shape
-                      ElevatedButton(
-                        onPressed: () {
-                          // Follow button functionality
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(horizontal: 35, vertical: 10),
-                          side: BorderSide(color: Colors.green, width: 0.50), // Add this line
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          textStyle: TextStyle(
-                            inherit: false, // Set inherit to false
-                            fontSize: 14.0,
+                        SizedBox(height: 11),
+                        Text(
+                          '${user.firstName} ${user.lastName}',
+                          textAlign: TextAlign.center, // Center the text
+                          style: TextStyle(
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
                           ),
-                        ).copyWith(
-                            elevation: MaterialStateProperty.all<double>(2)),
-                        child: Text('Follow'),
-                      ),
-                    ],
+                        ),
+                        Text(
+                          '${user.position}', // Display position
+                          textAlign: TextAlign.center, // Center the text
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          '${user.mutualFollowers} Mutual Follower',
+                          textAlign: TextAlign.center, // Center the text
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Spacer(),
+                        // Follow button with a rounded rectangle shape
+                        ElevatedButton(
+                          onPressed: () {
+                            // Follow button functionality
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.green,
+                            padding: EdgeInsets.symmetric(horizontal: 35, vertical: 5),
+                            side: BorderSide(color: Colors.green, width: 1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20.0),
+                            ),
+                          ),
+                          child: Text('Follow'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             );
           },
         )
-            : Text('No users found.'),
+            : Center(
+          child: Text('No connections found'),
+        ),
       ),
     );
   }

@@ -121,52 +121,59 @@ class _HomepageState extends State<Homepage> {
         onPressed: () => signout(),
         child: Icon(Icons.logout),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Icon(Icons.home, size: 24),
-            ),
-            label: 'Home',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.grey, width: 0.5), // Top border
           ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Icon(Icons.search, size: 24),
+        ),
+        child: BottomNavigationBar(
+          items: <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Icon(Icons.home, size: 24),
+              ),
+              label: 'Home',
             ),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Icon(Icons.add_circle, size: 32),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Icon(Icons.search, size: 24),
+              ),
+              label: 'Search',
             ),
-            label: 'Post',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Icon(Icons.library_books, size: 24),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Icon(Icons.add_circle, size: 32),
+              ),
+              label: 'Post',
             ),
-            label: 'Blog',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Icon(Icons.notifications, size: 24),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Icon(Icons.library_books, size: 24),
+              ),
+              label: 'Blog',
             ),
-            label: 'Notification',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // To keep all items visible
-        selectedFontSize: 12,
-        unselectedFontSize: 11,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), // bold
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Icon(Icons.notifications, size: 24),
+              ),
+              label: 'Notification',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Colors.green,
+          unselectedItemColor: Colors.grey,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed, // To keep all items visible
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), // bold
+        ),
       ),
     );
   }
