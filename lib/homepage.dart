@@ -45,9 +45,7 @@ class _HomepageState extends State<Homepage> {
 
   void _onItemTapped(int index) {
     if (index == 2) {
-      // Handle post action
-      // You can navigate to a different screen or show a dialog
-      // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => PostPage()));
+      
       return;
     } else {
       setState(() {
