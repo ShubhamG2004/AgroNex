@@ -125,16 +125,43 @@ class _LoginState extends State<Login> {
         'uid': user.uid,
         'firstName': firstName,
         'lastName': lastName,
-        'Pronouns':'',
-        'Position':'',
+        'Pronouns': '',
+        'Position': '',
         'photoURL': googleUser.photoUrl,
         'timestamp': FieldValue.serverTimestamp(),
         'email': user.email,
-        'number':'',
-        'address':'',
+        'number': '',
+        'address': '',
         // Add any additional fields you want to save
       });
+
+      // Initialize collections for the new user
+      await initializeUserCollections(user.uid);
     }
+  }
+
+  Future<void> initializeUserCollections(String uid) async {
+
+    await FirebaseFirestore.instance.collection('followers').doc(uid).set({
+      'followers': [],
+    });
+
+    await FirebaseFirestore.instance.collection('following').doc(uid).set({
+      'following': [],
+    });
+
+    await FirebaseFirestore.instance.collection('research').doc(uid).set({
+      'research': [],
+    });
+
+    await FirebaseFirestore.instance.collection('blog').doc(uid).set({
+      'blog': [],
+    });
+
+    // Initialize product collection
+    await FirebaseFirestore.instance.collection('product').doc(uid).set({
+      'product': [],
+    });
   }
 
   @override

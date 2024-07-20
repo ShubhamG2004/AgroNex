@@ -1,8 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:agronex/AdditionalInfoScreen.dart';
 import 'package:agronex/wrapper.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:get/get.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -15,18 +16,47 @@ class _SignupState extends State<Signup> {
   TextEditingController email = TextEditingController();
   TextEditingController password = TextEditingController();
 
-  signup() async {
+  Future<void> signup() async {
     try {
       UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email.text,
         password: password.text,
       );
 
+      await initializeUserCollections(userCredential.user!.uid);
+
       Get.to(() => AdditionalInfoScreen(user: userCredential.user!));
     } on FirebaseAuthException catch (e) {
       Get.snackbar('Error', e.message ?? 'An error occurred',
           backgroundColor: Colors.red, colorText: Colors.white);
     }
+  }
+
+  Future<void> initializeUserCollections(String uid) async {
+    // Initialize followers collection
+    await FirebaseFirestore.instance.collection('followers').doc(uid).set({
+      'followers': [], // Empty list of followers
+    });
+
+    // Initialize following collection
+    await FirebaseFirestore.instance.collection('following').doc(uid).set({
+      'following': [], // Empty list of following
+    });
+
+    // Initialize research collection
+    await FirebaseFirestore.instance.collection('research').doc(uid).set({
+      'research': [], // Empty list of research
+    });
+
+    // Initialize blog collection
+    await FirebaseFirestore.instance.collection('blog').doc(uid).set({
+      'blog': [], // Empty list of blog
+    });
+
+    // Initialize product collection
+    await FirebaseFirestore.instance.collection('product').doc(uid).set({
+      'product': [], // Empty list of product
+    });
   }
 
   @override

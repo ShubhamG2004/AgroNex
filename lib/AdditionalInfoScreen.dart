@@ -40,7 +40,7 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
         'address':'',
       });
 
-      Get.offAll(() => Wrapper()); // Navigate to Wrapper screen
+      Get.offAll(() => Wrapper());
     } catch (e) {
       Get.snackbar('Error', 'Failed to save information: $e',
           backgroundColor: Colors.red, colorText: Colors.white);
