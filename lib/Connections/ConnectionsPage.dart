@@ -105,13 +105,13 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        await FirebaseFirestore.instance.collection('followers').doc(user.uid).set({
+        await FirebaseFirestore.instance.collection('followers').doc(user.uid).update({
           'followers': FieldValue.arrayUnion([currentUser.uid]),
-        }, SetOptions(merge: true));
+        });
 
-        await FirebaseFirestore.instance.collection('following').doc(currentUser.uid).set({
+        await FirebaseFirestore.instance.collection('following').doc(currentUser.uid).update({
           'following': FieldValue.arrayUnion([user.uid]),
-        }, SetOptions(merge: true));
+        });
 
         await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
 
@@ -150,7 +150,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             : Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(5.0),
+              padding: const EdgeInsets.only(top: 5, left: 5, right: 5, bottom: 5),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -161,7 +161,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             ),
             if (followRequests.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                padding: const EdgeInsets.only(top: 0, left: 8, right: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -180,6 +180,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                           icon: Icon(Icons.arrow_forward),
                           color: Colors.black,
                           onPressed: () {
+                            // Navigate to Follow Requests page
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -204,17 +205,16 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                           child: ListTile(
                             contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
                             leading: CircleAvatar(
-                              radius: 18,
+                              radius: 18, // Smaller profile photo
                               backgroundImage: user.photoURL.isNotEmpty
                                   ? NetworkImage(user.photoURL)
                                   : AssetImage('assets/images/default_avatar.png') as ImageProvider,
                             ),
                             title: Text(
                               '${user.firstName} ${user.lastName}',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold), // Smaller username font size
                             ),
-                            subtitle: Text(
-                              ' wants to follow you',
+                            subtitle: Text(' wants to follow you',
                               style: TextStyle(fontSize: 14),
                             ),
                             trailing: Row(
@@ -272,6 +272,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                     padding: EdgeInsets.all(1.50),
                     child: GestureDetector(
                       onTap: () {
+                        // Handle card tap
                         debugPrint('Card tapped for ${user.firstName} ${user.lastName}');
                       },
                       child: Card(
@@ -420,6 +421,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
   }
 }
 
+// Create a new page for Follow Requests
 class FollowRequestsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
