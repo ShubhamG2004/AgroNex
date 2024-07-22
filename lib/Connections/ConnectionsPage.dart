@@ -164,7 +164,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        await FirebaseFirestore.instance.collection('follow_requests').add({
+        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).set({
           'fromUserId': currentUser.uid,
           'toUserId': user.uid,
         });
@@ -201,11 +201,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
         });
 
         // Remove follow request
-        await FirebaseFirestore.instance.collection('follow_requests').where('toUserId', isEqualTo: currentUser.uid).where('fromUserId', isEqualTo: user.uid).get().then((snapshot) {
-          for (DocumentSnapshot doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        });
+        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
 
         // Update UI
         setState(() {
@@ -225,11 +221,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        await FirebaseFirestore.instance.collection('follow_requests').where('toUserId', isEqualTo: currentUser.uid).where('fromUserId', isEqualTo: user.uid).get().then((snapshot) {
-          for (DocumentSnapshot doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        });
+        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
 
         setState(() {
           followRequests.removeWhere((request) => request.uid == user.uid);
@@ -272,10 +264,178 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                 height: 0.5, // Reduced height
                 width: double.infinity,
               ),
-              SizedBox(height: 8), // Space between the border and follow requests title
-              _buildFollowRequestsSection(),
-              SizedBox(height: 8), // Space between sections
-              _buildDiscoverPeopleSection(),
+              SizedBox(height: 8), // Space between the border and follow requests
+              if (followRequests.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Follow Requests',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.arrow_forward),
+                            color: Colors.black,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FollowRequestsPage(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Card(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          side: BorderSide(color: Colors.grey, width: 0.5),
+                        ),
+                        child: Container(
+                          padding: EdgeInsets.all(8.0),
+                          child: Column(
+                            children: followRequests.map((request) {
+                              return ListTile(
+                                contentPadding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                                leading: CircleAvatar(
+                                  radius: 18,
+                                  backgroundImage: request.photoURL.isNotEmpty
+                                      ? NetworkImage(request.photoURL)
+                                      : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                                ),
+                                title: Text('${request.firstName} ${request.lastName}'),
+                                subtitle: Text('${request.firstName} wants to follow you'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () => acceptFollowRequest(request),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      ),
+                                      child: Text('Accept'),
+                                    ),
+                                    SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: () => ignoreFollowRequest(request),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      ),
+                                      child: Text('Ignore'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (users.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Container(
+                        color: Colors.grey,
+                        height: 0.5, // Border above the user profile cards
+                        width: double.infinity,
+                      ),
+                      SizedBox(height: 8), // Space between the border and user profile cards
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Users You might Be Follow',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        ],
+                      ),
+                      GridView.builder(
+                        shrinkWrap: true, // Allows GridView to take only the space it needs
+                        physics: NeverScrollableScrollPhysics(), // Disables GridView scrolling
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8.0,
+                          mainAxisSpacing: 8.0,
+                          childAspectRatio: 0.74,
+                        ),
+                        itemCount: users.length,
+                        itemBuilder: (context, index) {
+                          UserModel user = users[index];
+                          return GestureDetector(
+                            onTap: () {
+                              debugPrint('Card tapped for ${user.firstName} ${user.lastName}');
+                            },
+                            child: Card(
+                              color: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                                side: BorderSide(color: Colors.grey, width: 0.5),
+                              ),
+                              child: Container(
+                                padding: EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 50,
+                                      backgroundImage: user.photoURL.isNotEmpty
+                                          ? NetworkImage(user.photoURL)
+                                          : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      '${user.firstName} ${user.lastName}',
+                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      '${user.position}',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                    SizedBox(height: 8),
+                                    ElevatedButton(
+                                      onPressed: () => sendFollowRequest(user),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: Colors.green,
+                                        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 35),
+                                        side: BorderSide(color: Colors.green, width: 1),
+                                      ),
+                                      child: Text('Follow'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
@@ -283,203 +443,49 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
     );
   }
 
-  Widget _buildStatCard(String label, int count, {bool isNavigable = false, List<UserModel>? followers, List<UserModel>? following}) {
-    return InkWell(
-      onTap: isNavigable
-          ? () {
-        if (label == 'Followers' && followers != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => FollowersPage(followers: followers)),
-          );
-        } else if (label == 'Following' && following != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => FollowingPage(followingUsers: following)),
-          );
-        }
-      }
-          : null,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8.0),
-          color: Colors.blue,
-        ),
-        child: Column(
-          children: [
-            Text(
-              count.toString(),
-              style: TextStyle(
-                fontSize: 20.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(height: 4.0),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 16.0,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFollowRequestsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 35.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (followRequests.isNotEmpty) ...[
-            Text(
-              'Follow Requests',
-              style: TextStyle(
-                fontSize: 20.0,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              height: 100.0,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: followRequests.length,
-                itemBuilder: (context, index) {
-                  UserModel user = followRequests[index];
-                  return _buildFollowRequestCard(user);
-                },
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFollowRequestCard(UserModel user) {
-    return Container(
-      width: 250.0, // Adjusted width for better display
-      margin: EdgeInsets.symmetric(horizontal: 8.0),
-      padding: EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8.0),
-        color: Colors.grey[200],
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            blurRadius: 5.0,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundImage: NetworkImage(user.photoURL),
-            radius: 30.0,
-          ),
-          SizedBox(width: 16.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${user.firstName} ${user.lastName}',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  user.position,
-                  style: TextStyle(
-                    fontSize: 14.0,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => acceptFollowRequest(user),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        backgroundColor: Colors.blue,
-                        textStyle: TextStyle(color: Colors.white),
-                      ),
-                      child: Text('Accept'),
-                    ),
-                    SizedBox(width: 8.0),
-                    ElevatedButton(
-                      onPressed: () => ignoreFollowRequest(user),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        backgroundColor: Colors.red,
-                        textStyle: TextStyle(color: Colors.white),
-                      ),
-                      child: Text('Ignore'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDiscoverPeopleSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 35.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Discover People',
-            style: TextStyle(
-              fontSize: 20.0,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8.0),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              UserModel user = users[index];
-              return _buildDiscoverPeopleCard(user);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDiscoverPeopleCard(UserModel user) {
+  Widget _buildStatCard(String title, int count, {bool isNavigable = false, List<UserModel> followers = const [], List<UserModel> following = const []}) {
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 8.0),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: NetworkImage(user.photoURL),
-          radius: 30.0,
-        ),
-        title: Text('${user.firstName} ${user.lastName}'),
-        subtitle: Text(user.position),
-        trailing: ElevatedButton(
-          onPressed: () => sendFollowRequest(user),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            textStyle: TextStyle(color: Colors.white),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+        side: BorderSide(color: Colors.grey, width: 0.5),
+      ),
+      child: InkWell(
+        onTap: () {
+          if (isNavigable) {
+            if (title == 'Followers') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FollowersPage(followers: followers),
+                ),
+              );
+            } else if (title == 'Following') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FollowingPage(following: following),
+                ),
+              );
+            }
+          }
+        },
+        child: Container(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 4), // Reduced gap between text and count
+              Text(
+                count.toString(),
+                style: TextStyle(fontSize: 24, color: Colors.blue),
+              ),
+            ],
           ),
-          child: Text('Follow'),
         ),
       ),
     );
