@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'user_model.dart';
+import 'FollowRequestsPage.dart';
+import 'FollowersPage.dart';
+import 'FollowingPage.dart';
 
 class ConnectionsPage extends StatefulWidget {
   const ConnectionsPage({Key? key}) : super(key: key);
@@ -13,6 +16,9 @@ class ConnectionsPage extends StatefulWidget {
 class _ConnectionsPageState extends State<ConnectionsPage> {
   List<UserModel> users = [];
   List<UserModel> followRequests = [];
+  List<UserModel> followers = [];
+  List<UserModel> followingUsers = [];
+  List<String> followingUserIds = [];
   bool isLoading = true;
   int followersCount = 0;
   int followingCount = 0;
@@ -22,6 +28,8 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
     super.initState();
     fetchUsers();
     fetchFollowRequests();
+    fetchFollowers();
+    fetchFollowingUsers();
   }
 
   Future<void> fetchUsers() async {
@@ -29,19 +37,28 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').get();
+        // Fetch current user's data for counts
         DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
         Map<String, dynamic>? currentUserData = currentUserDoc.data() as Map<String, dynamic>?;
 
         if (currentUserData != null) {
-          followersCount = currentUserData['followers_count'] ?? 0;
-          followingCount = currentUserData['following_count'] ?? 0;
+          setState(() {
+            followersCount = currentUserData['followers_count'] ?? 0;
+            followingCount = currentUserData['following_count'] ?? 0;
+          });
         }
 
+        // Fetch all users excluding the current user
+        QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').where('uid', isNotEqualTo: currentUser.uid).get();
         List<UserModel> fetchedUsers = snapshot.docs.map((doc) => UserModel.fromDocument(doc)).toList();
 
+        // Fetch the list of user IDs that the current user is following
+        await fetchFollowingUserIds();
+        List<UserModel> filteredUsers = fetchedUsers.where((user) => !followingUserIds.contains(user.uid)).toList();
+
         setState(() {
-          users = fetchedUsers;
+          users = filteredUsers;
+          isLoading = false;
         });
       } catch (e) {
         print('Error fetching users: $e');
@@ -63,25 +80,83 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
           var fromUserId = doc['fromUserId'];
           var userDoc = await FirebaseFirestore.instance.collection('users').doc(fromUserId).get();
           var user = UserModel.fromDocument(userDoc);
-          requests.add(user);
+
+          // Check if the user is already a follower or following
+          if (!followers.any((follower) => follower.uid == user.uid) && !followingUserIds.contains(user.uid)) {
+            requests.add(user);
+          }
         }
 
         setState(() {
           followRequests = requests;
-          isLoading = false;
         });
       } catch (e) {
         print('Error fetching follow requests: $e');
-        setState(() {
-          isLoading = false;
-        });
       }
     } else {
       print('User is not authenticated');
-      setState(() {
-        isLoading = false;
-      });
     }
+  }
+
+  Future<void> fetchFollowers() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser != null) {
+      try {
+        DocumentSnapshot followersDoc = await FirebaseFirestore.instance.collection('followers').doc(currentUser.uid).get();
+        Map<String, dynamic>? data = followersDoc.data() as Map<String, dynamic>?;
+
+        List<String> followerIds = List<String>.from(data?['followers'] ?? []);
+        List<UserModel> fetchedFollowers = [];
+
+        for (String uid in followerIds) {
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+          if (userDoc.exists) {
+            fetchedFollowers.add(UserModel.fromDocument(userDoc));
+          }
+        }
+
+        setState(() {
+          followers = fetchedFollowers;
+          followersCount = fetchedFollowers.length; // Update followers count
+        });
+      } catch (e) {
+        print('Error fetching followers: $e');
+      }
+    } else {
+      print('User is not authenticated');
+    }
+  }
+
+  Future<void> fetchFollowingUserIds() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser != null) {
+      try {
+        DocumentSnapshot followingDoc = await FirebaseFirestore.instance.collection('following').doc(currentUser.uid).get();
+        Map<String, dynamic>? data = followingDoc.data() as Map<String, dynamic>?;
+        followingUserIds = List<String>.from(data?['following'] ?? []);
+      } catch (e) {
+        print('Error fetching following users: $e');
+      }
+    }
+  }
+
+  Future<void> fetchFollowingUsers() async {
+    await fetchFollowingUserIds();
+    List<UserModel> fetchedFollowingUsers = [];
+
+    for (String uid in followingUserIds) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        fetchedFollowingUsers.add(UserModel.fromDocument(userDoc));
+      }
+    }
+
+    setState(() {
+      followingUsers = fetchedFollowingUsers;
+      followingCount = fetchedFollowingUsers.length; // Update following count
+    });
   }
 
   Future<void> sendFollowRequest(UserModel user) async {
@@ -89,7 +164,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).set({
+        await FirebaseFirestore.instance.collection('follow_requests').add({
           'fromUserId': currentUser.uid,
           'toUserId': user.uid,
         });
@@ -105,18 +180,39 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        await FirebaseFirestore.instance.collection('followers').doc(user.uid).update({
-          'followers': FieldValue.arrayUnion([currentUser.uid]),
+        // Update followers count for the user
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'followers_count': FieldValue.increment(1),
         });
 
+        // Update following count for the current user
+        await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
+          'following_count': FieldValue.increment(1),
+        });
+
+        // Add user to the following list
         await FirebaseFirestore.instance.collection('following').doc(currentUser.uid).update({
           'following': FieldValue.arrayUnion([user.uid]),
         });
 
-        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
+        // Add current user to the follower list
+        await FirebaseFirestore.instance.collection('followers').doc(user.uid).update({
+          'followers': FieldValue.arrayUnion([currentUser.uid]),
+        });
 
+        // Remove follow request
+        await FirebaseFirestore.instance.collection('follow_requests').where('toUserId', isEqualTo: currentUser.uid).where('fromUserId', isEqualTo: user.uid).get().then((snapshot) {
+          for (DocumentSnapshot doc in snapshot.docs) {
+            doc.reference.delete();
+          }
+        });
+
+        // Update UI
         setState(() {
           followRequests.removeWhere((request) => request.uid == user.uid);
+          followersCount += 1; // Increment followers count
+          followingCount += 1; // Increment following count
+          followingUsers.add(user); // Add user to followingUsers
         });
       } catch (e) {
         print('Error accepting follow request: $e');
@@ -129,7 +225,11 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
     if (currentUser != null) {
       try {
-        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
+        await FirebaseFirestore.instance.collection('follow_requests').where('toUserId', isEqualTo: currentUser.uid).where('fromUserId', isEqualTo: user.uid).get().then((snapshot) {
+          for (DocumentSnapshot doc in snapshot.docs) {
+            doc.reference.delete();
+          }
+        });
 
         setState(() {
           followRequests.removeWhere((request) => request.uid == user.uid);
@@ -147,209 +247,81 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
       body: Center(
         child: isLoading
             ? CircularProgressIndicator()
-            : Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 5, left: 5, right: 5, bottom: 5),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatCard('Followers', followersCount, isNavigable: true),
-                  _buildStatCard('Following', followingCount, isNavigable: true),
-                ],
-              ),
-            ),
-            if (followRequests.isNotEmpty)
+            : SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 2.0), // Reduced height
               Padding(
-                padding: const EdgeInsets.only(top: 0, left: 8, right: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.fromLTRB(35.0, 0.0, 35.0, 0.0),
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Follow Requests',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.arrow_forward),
-                          color: Colors.black,
-                          onPressed: () {
-                            // Navigate to Follow Requests page
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FollowRequestsPage(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                    Expanded(
+                      child: _buildStatCard('Followers', followersCount, isNavigable: true, followers: followers),
                     ),
-                    SizedBox(height: 2),
-                    ...followRequests.map((user) => Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4.0),
-                      child: Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: BorderSide(color: Colors.grey, width: 0.5),
-                        ),
-                        child: Container(
-                          width: MediaQuery.of(context).size.width - 15,
-                          child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
-                            leading: CircleAvatar(
-                              radius: 18, // Smaller profile photo
-                              backgroundImage: user.photoURL.isNotEmpty
-                                  ? NetworkImage(user.photoURL)
-                                  : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                            ),
-                            title: Text(
-                              '${user.firstName} ${user.lastName}',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold), // Smaller username font size
-                            ),
-                            subtitle: Text(' wants to follow you',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () => acceptFollowRequest(user),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.green,
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    side: BorderSide(color: Colors.green, width: 1),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16.0),
-                                    ),
-                                  ),
-                                  child: Text('Accept', style: TextStyle(fontSize: 12)),
-                                ),
-                                SizedBox(width: 4),
-                                ElevatedButton(
-                                  onPressed: () => ignoreFollowRequest(user),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.red,
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    side: BorderSide(color: Colors.red, width: 1),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16.0),
-                                    ),
-                                  ),
-                                  child: Text('Ignore', style: TextStyle(fontSize: 12)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    )),
+                    SizedBox(width: 5), // Space between the cards
+                    Expanded(
+                      child: _buildStatCard('Following', followingCount, isNavigable: true, following: followingUsers),
+                    ),
                   ],
                 ),
               ),
-            Expanded(
-              child: users.isNotEmpty
-                  ? GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 2.0,
-                  mainAxisSpacing: 1.0,
-                  childAspectRatio: 0.74,
-                ),
-                itemCount: users.length,
-                itemBuilder: (context, index) {
-                  UserModel user = users[index];
-                  return Padding(
-                    padding: EdgeInsets.all(1.50),
-                    child: GestureDetector(
-                      onTap: () {
-                        // Handle card tap
-                        debugPrint('Card tapped for ${user.firstName} ${user.lastName}');
-                      },
-                      child: Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                          side: BorderSide(color: Colors.grey, width: 0.5),
-                        ),
-                        child: Container(
-                          padding: EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                height: 100,
-                                alignment: Alignment.center,
-                                child: CircleAvatar(
-                                  radius: 50,
-                                  backgroundColor: Colors.green,
-                                  backgroundImage: user.photoURL.isNotEmpty
-                                      ? NetworkImage(user.photoURL)
-                                      : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                                ),
-                              ),
-                              SizedBox(height: 11),
-                              Text(
-                                '${user.firstName} ${user.lastName}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '${user.position}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              SizedBox(height: 3),
-                              Text(
-                                '${user.mutualFollowers} Mutual Follower${user.mutualFollowers != 1 ? 's' : ''}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              Spacer(),
-                              ElevatedButton(
-                                onPressed: () {
-                                  sendFollowRequest(user);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.green,
-                                  padding: EdgeInsets.symmetric(horizontal: 35, vertical: 5),
-                                  side: BorderSide(color: Colors.green, width: 1),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                  ),
-                                ),
-                                child: Text('Follow'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              )
-                  : Center(
-                child: Text('No connections found'),
+              SizedBox(height: 10),
+              Container(
+                color: Colors.grey,
+                height: 0.5, // Reduced height
+                width: double.infinity,
+              ),
+              SizedBox(height: 8), // Space between the border and follow requests title
+              _buildFollowRequestsSection(),
+              SizedBox(height: 8), // Space between sections
+              _buildDiscoverPeopleSection(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, int count, {bool isNavigable = false, List<UserModel>? followers, List<UserModel>? following}) {
+    return InkWell(
+      onTap: isNavigable
+          ? () {
+        if (label == 'Followers' && followers != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => FollowersPage(followers: followers)),
+          );
+        } else if (label == 'Following' && following != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => FollowingPage(followingUsers: following)),
+          );
+        }
+      }
+          : null,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8.0),
+          color: Colors.blue,
+        ),
+        child: Column(
+          children: [
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 20.0,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 4.0),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16.0,
+                color: Colors.white,
               ),
             ),
           ],
@@ -358,79 +330,157 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
     );
   }
 
-  Widget _buildStatCard(String title, int count, {bool isNavigable = false}) {
-    String formattedCount = _formatCount(count);
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.0),
-        side: BorderSide(color: Colors.grey, width: 0.5),
+  Widget _buildFollowRequestsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 35.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (followRequests.isNotEmpty) ...[
+            Text(
+              'Follow Requests',
+              style: TextStyle(
+                fontSize: 20.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              height: 100.0,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: followRequests.length,
+                itemBuilder: (context, index) {
+                  UserModel user = followRequests[index];
+                  return _buildFollowRequestCard(user);
+                },
+              ),
+            ),
+          ],
+        ],
       ),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        width: MediaQuery.of(context).size.width / 2 - 32,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
+    );
+  }
+
+  Widget _buildFollowRequestCard(UserModel user) {
+    return Container(
+      width: 250.0, // Adjusted width for better display
+      margin: EdgeInsets.symmetric(horizontal: 8.0),
+      padding: EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.0),
+        color: Colors.grey[200],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            blurRadius: 5.0,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundImage: NetworkImage(user.photoURL),
+            radius: 30.0,
+          ),
+          SizedBox(width: 16.0),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  formattedCount,
+                  '${user.firstName} ${user.lastName}',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 16.0,
                     fontWeight: FontWeight.bold,
-                    color: isNavigable ? Colors.black : Colors.black,
                   ),
                 ),
-                if (isNavigable)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4.0),
-                    child: Image.asset(
-                      'assets/images/arrow.png',
-                      width: 18,
-                      height: 18,
-                      color: Colors.green,
-                    ),
+                Text(
+                  user.position,
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    color: Colors.grey[600],
                   ),
+                ),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => acceptFollowRequest(user),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        backgroundColor: Colors.blue,
+                        textStyle: TextStyle(color: Colors.white),
+                      ),
+                      child: Text('Accept'),
+                    ),
+                    SizedBox(width: 8.0),
+                    ElevatedButton(
+                      onPressed: () => ignoreFollowRequest(user),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        backgroundColor: Colors.red,
+                        textStyle: TextStyle(color: Colors.white),
+                      ),
+                      child: Text('Ignore'),
+                    ),
+                  ],
+                ),
               ],
             ),
-            SizedBox(height: 1),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  String _formatCount(int count) {
-    if (count >= 1000000) {
-      return '${(count / 1000000).toStringAsFixed(1)}M';
-    } else if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}K';
-    }
-    return count.toString();
-  }
-}
-
-// Create a new page for Follow Requests
-class FollowRequestsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Follow Requests'),
+  Widget _buildDiscoverPeopleSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 35.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Discover People',
+            style: TextStyle(
+              fontSize: 20.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8.0),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: users.length,
+            itemBuilder: (context, index) {
+              UserModel user = users[index];
+              return _buildDiscoverPeopleCard(user);
+            },
+          ),
+        ],
       ),
-      body: Center(
-        child: Text('Follow Requests Page'),
+    );
+  }
+
+  Widget _buildDiscoverPeopleCard(UserModel user) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8.0),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundImage: NetworkImage(user.photoURL),
+          radius: 30.0,
+        ),
+        title: Text('${user.firstName} ${user.lastName}'),
+        subtitle: Text(user.position),
+        trailing: ElevatedButton(
+          onPressed: () => sendFollowRequest(user),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            textStyle: TextStyle(color: Colors.white),
+          ),
+          child: Text('Follow'),
+        ),
       ),
     );
   }

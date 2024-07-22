@@ -17,6 +17,9 @@ class _HomepageState extends State<Homepage> {
   int _selectedIndex = 0;
   Map<String, dynamic>? userData;
   PageController _pageController = PageController();
+  bool _isSearching = false;
+  TextEditingController _searchController = TextEditingController();
+  List<String> searchResults = ['Result 1', 'Result 2', 'Result 3'];
 
   @override
   void initState() {
@@ -45,7 +48,6 @@ class _HomepageState extends State<Homepage> {
 
   void _onItemTapped(int index) {
     if (index == 2) {
-      
       return;
     } else {
       setState(() {
@@ -53,6 +55,15 @@ class _HomepageState extends State<Homepage> {
       });
       _pageController.jumpToPage(index);
     }
+  }
+
+  void _performSearch(String query) {
+    // Simulate search logic here
+    setState(() {
+      searchResults = ['Result 1', 'Result 2', 'Result 3']
+          .where((result) => result.contains(query))
+          .toList();
+    });
   }
 
   @override
@@ -70,62 +81,125 @@ class _HomepageState extends State<Homepage> {
           child: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,
-            title: Image.asset('assets/images/logo.png', height: 30),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.account_circle, color: Colors.black),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()),
-                  );
-                },
+            title: _isSearching
+                ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                border: InputBorder.none,
               ),
-            ],
+              style: TextStyle(color: Colors.black, fontSize: 16.0),
+              onChanged: _performSearch,
+            )
+                : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Image.asset('assets/images/logo.png', height: 30),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.search, color: Colors.black),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = true;
+                        });
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.message, color: Colors.black),
+                      onPressed: () {
+                        // Implement message functionality here
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.account_circle, color: Colors.black),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ProfilePage()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            leading: _isSearching
+                ? IconButton(
+              icon: Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () {
+                setState(() {
+                  _isSearching = false;
+                });
+                _searchController.clear();
+                searchResults = ['Result 1', 'Result 2', 'Result 3'];
+              },
+            )
+                : null,
           ),
         ),
       ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+      body: Stack(
         children: [
-          Center(
-            child: userData != null
-                ? Card(
-              elevation: 4,
-              margin: EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: userData!['photoURL'] != null
-                          ? NetworkImage(userData!['photoURL'])
-                          : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            children: [
+              Center(
+                child: userData != null
+                    ? Card(
+                  elevation: 4,
+                  margin: EdgeInsets.all(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundImage: userData!['photoURL'] != null
+                              ? NetworkImage(userData!['photoURL'])
+                              : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          '${userData!['firstName']} ${userData!['lastName']}',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Text(userData!['email']),
+                      ],
                     ),
-                    SizedBox(height: 16),
-                    Text(
-                      '${userData!['firstName']} ${userData!['lastName']}',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8),
-                    Text(userData!['email']),
-                  ],
-                ),
+                  ),
+                )
+                    : CircularProgressIndicator(),
               ),
-            )
-                : CircularProgressIndicator(),
+              ConnectionsPage(),
+              Center(child: Text('Placeholder for Post Page')), // Placeholder for Post page
+              Center(child: Text('Blog Page')), // Placeholder for Blog page
+              Center(child: Text('Notifications Page')), // Placeholder for Notifications page
+            ],
           ),
-          ConnectionsPage(),
-          Center(child: Text('Placeholder for Post Page')), // Placeholder for Post page
-          Center(child: Text('Blog Page')), // Placeholder for Blog page
-          Center(child: Text('Notifications Page')), // Placeholder for Notifications page
+          if (_isSearching)
+            Container(
+              color: Colors.white,
+              child: ListView.builder(
+                itemCount: searchResults.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(searchResults[index]),
+                    onTap: () {
+                      // Handle search result tap
+                    },
+                  );
+                },
+              ),
+            ),
         ],
       ),
       floatingActionButton: FloatingActionButton(

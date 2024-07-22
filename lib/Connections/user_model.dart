@@ -1,44 +1,36 @@
+// user_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
-  final String uid;
+  final String uid; // Add uid
   final String firstName;
   final String lastName;
+  final String email;
   final String photoURL;
   final String position;
   final int mutualFollowers;
-  bool isRequested;  // New field to track follow request status
 
   UserModel({
-    required this.uid,
+    required this.uid, // Initialize uid
     required this.firstName,
     required this.lastName,
+    required this.email,
     required this.photoURL,
-    required this.position,
-    required this.mutualFollowers,
-    this.isRequested = false,  // Default value
+    this.position = 'Unknown Position',
+    this.mutualFollowers = 0,
   });
 
   factory UserModel.fromDocument(DocumentSnapshot doc) {
-    return UserModel(
-      uid: doc.id,
-      firstName: doc['firstName'],
-      lastName: doc['lastName'],
-      photoURL: doc['photoURL'] ?? '',
-      position: doc['position'] ?? '',
-      mutualFollowers: doc['mutualFollowers'] ?? 0,
-      isRequested: doc['isRequested'] ?? false,  // Set field from document
-    );
-  }
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-  Map<String, dynamic> toMap() {
-    return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'photoURL': photoURL,
-      'position': position,
-      'mutualFollowers': mutualFollowers,
-      'isRequested': isRequested,  // Include field in map
-    };
+    return UserModel(
+      uid: doc.id, // Use the document ID as uid
+      firstName: data['firstName'] ?? '',
+      lastName: data['lastName'] ?? '',
+      email: data['email'] ?? '',
+      photoURL: data['photoURL'] ?? '',
+      position: data['Position'] ?? 'Unknown Position',
+      mutualFollowers: data['mutualFollowers'] ?? 0,
+    );
   }
 }
