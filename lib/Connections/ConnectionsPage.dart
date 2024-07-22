@@ -249,11 +249,17 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildStatCard('Followers', followersCount, isNavigable: true, followers: followers),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0), // Decrease the padding here
+                        child: _buildStatCard('Followers', followersCount, isNavigable: true, followers: followers),
+                      ),
                     ),
                     SizedBox(width: 5), // Space between the cards
                     Expanded(
-                      child: _buildStatCard('Following', followingCount, isNavigable: true, following: followingUsers),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0), // Decrease the padding here
+                        child: _buildStatCard('Following', followingCount, isNavigable: true, following: followingUsers),
+                      ),
                     ),
                   ],
                 ),
@@ -354,14 +360,9 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
                     children: [
-                      Container(
-                        color: Colors.grey,
-                        height: 0.5, // Border above the user profile cards
-                        width: double.infinity,
-                      ),
                       SizedBox(height: 8), // Space between the border and user profile cards
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           Text(
                             'Users You might Be Follow',
@@ -471,7 +472,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
           }
         },
         child: Container(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(8.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
