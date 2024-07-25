@@ -23,28 +23,12 @@ class FollowingPage extends StatelessWidget {
     return false;
   }
 
-  Future<void> _sendMessage(UserModel receiver) async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      CollectionReference messages = FirebaseFirestore.instance.collection('messages');
-
-      await messages.add({
-        'senderId': currentUser.uid,
-        'receiverId': receiver.uid,
-        'message': 'Hello!', // You can customize the message or use a text input to get this value
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    }
-  }
-
   Future<void> _openChat(UserModel receiver, BuildContext context) async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       bool isFollowed = await _isUserFollowed(receiver);
       if (isFollowed) {
-        await _sendMessage(receiver); // Send the message
-
-        // Navigate to the chat page
+        // Navigate to the chat page without sending a message
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -70,7 +54,7 @@ class FollowingPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Following'),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.green, // Adjust color as needed
         elevation: 0,
       ),
       body: Container(
@@ -104,10 +88,7 @@ class FollowingPage extends StatelessWidget {
                 subtitle: Text(user.position),
                 trailing: IconButton(
                   onPressed: () => _openChat(user, context),
-                  icon: Transform.scale(
-                    scale: 1.3,
-                    child: Icon(Icons.message, color: Colors.green),
-                  ),
+                  icon: Icon(Icons.message, color: Colors.green),
                 ),
               ),
             );

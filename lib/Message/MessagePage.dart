@@ -52,8 +52,11 @@ class _MessagesPageState extends State<MessagesPage> {
         .get();
 
     for (var doc in querySnapshot.docs) {
-      doc.reference.update({'seen': true});
+      await doc.reference.update({'seen': true});
     }
+    setState(() {
+      _hasUnreadMessages = false; // Reset the flag after marking as read
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -114,65 +117,63 @@ class _MessagesPageState extends State<MessagesPage> {
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
+            child: StreamBuilder<List<DocumentSnapshot>>(
               stream: FirebaseFirestore.instance
                   .collection('messages')
                   .where('senderId', isEqualTo: widget.senderId)
                   .where('receiverId', isEqualTo: widget.receiverId)
                   .orderBy('timestamp')
-                  .snapshots(),
-              builder: (context, snapshot1) {
-                if (!snapshot1.hasData) {
+                  .snapshots()
+                  .map((snapshot) => snapshot.docs)
+                  .asyncMap((docs) async {
+                QuerySnapshot receivedMessagesSnapshot = await FirebaseFirestore.instance
+                    .collection('messages')
+                    .where('senderId', isEqualTo: widget.receiverId)
+                    .where('receiverId', isEqualTo: widget.senderId)
+                    .orderBy('timestamp')
+                    .get();
+
+                List<DocumentSnapshot> allMessages = [...docs, ...receivedMessagesSnapshot.docs];
+                allMessages.sort((a, b) => (a['timestamp'] as Timestamp).compareTo(b['timestamp'] as Timestamp));
+                return allMessages;
+              }),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
                 }
-                return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('messages')
-                      .where('senderId', isEqualTo: widget.receiverId)
-                      .where('receiverId', isEqualTo: widget.senderId)
-                      .orderBy('timestamp')
-                      .snapshots(),
-                  builder: (context, snapshot2) {
-                    if (!snapshot2.hasData) {
-                      return Center(child: CircularProgressIndicator());
+                List<DocumentSnapshot> messages = snapshot.data!;
+                bool showUnreadText = _hasUnreadMessages;
+
+                return ListView.builder(
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    var message = messages[index];
+                    var time = (message['timestamp'] as Timestamp).toDate();
+                    var timeString = "${time.hour}:${time.minute}";
+
+                    bool isSender = message['senderId'] == widget.senderId;
+                    Map<String, dynamic> messageData = message.data() as Map<String, dynamic>;
+                    bool isSeen = messageData['seen'] ?? false;
+
+                    if (showUnreadText && !isSender && index == 0) {
+                      showUnreadText = false;
+                      return Column(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            margin: EdgeInsets.symmetric(vertical: 10),
+                            color: Colors.yellow,
+                            child: Text(
+                              "Unread Messages",
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          _buildMessageBubble(messageData, isSender, timeString, isSeen),
+                        ],
+                      );
                     }
-                    List<DocumentSnapshot> messages = [...snapshot1.data!.docs, ...snapshot2.data!.docs];
-                    messages.sort((a, b) => (a['timestamp'] as Timestamp).compareTo(b['timestamp'] as Timestamp));
 
-                    bool showUnreadText = _hasUnreadMessages;
-
-                    return ListView.builder(
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        var message = messages[index];
-                        var time = (message['timestamp'] as Timestamp).toDate();
-                        var timeString = "${time.hour}:${time.minute}";
-
-                        bool isSender = message['senderId'] == widget.senderId;
-                        Map<String, dynamic> messageData = message.data() as Map<String, dynamic>;
-                        bool isSeen = messageData.containsKey('seen') ? messageData['seen'] : false;
-
-                        if (_hasUnreadMessages && showUnreadText && !isSeen && !isSender) {
-                          showUnreadText = false; // Show "Unread Messages" text only once
-                          return Column(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                margin: EdgeInsets.symmetric(vertical: 10),
-                                // color: Colors.yellow,
-                                child: Text(
-                                  "Unread Messages",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              _buildMessageBubble(messageData, isSender, timeString, isSeen),
-                            ],
-                          );
-                        }
-
-                        return _buildMessageBubble(messageData, isSender, timeString, isSeen);
-                      },
-                    );
+                    return _buildMessageBubble(messageData, isSender, timeString, isSeen);
                   },
                 );
               },

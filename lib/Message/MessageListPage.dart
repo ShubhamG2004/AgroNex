@@ -45,13 +45,27 @@ class MessageListPage extends StatelessWidget {
     return [];
   }
 
+  Future<int> _getUnreadCount(String userId) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      QuerySnapshot unreadMessages = await FirebaseFirestore.instance
+          .collection('messages')
+          .where('receiverId', isEqualTo: currentUser.uid)
+          .where('senderId', isEqualTo: userId)
+          .where('seen', isEqualTo: false)
+          .get();
+
+      return unreadMessages.docs.length;
+    }
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Messages'),
-        backgroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: Colors.green,
       ),
       body: FutureBuilder<List<UserModel>>(
         future: _getMessageUsers(),
@@ -59,33 +73,37 @@ class MessageListPage extends StatelessWidget {
           if (!snapshot.hasData) {
             return Center(child: CircularProgressIndicator());
           }
-          List<UserModel>? users = snapshot.data;
-          if (users == null || users.isEmpty) {
-            return Center(
-              child: Text('No messages yet'),
-            );
-          }
+          List<UserModel> users = snapshot.data!;
           return ListView.builder(
             itemCount: users.length,
             itemBuilder: (context, index) {
               UserModel user = users[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: user.photoURL.isNotEmpty
-                      ? NetworkImage(user.photoURL)
-                      : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                ),
-                title: Text('${user.firstName} ${user.lastName}'),
-                subtitle: Text(user.position),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MessagesPage(
-                        senderId: FirebaseAuth.instance.currentUser!.uid,
-                        receiverId: user.uid,
-                      ),
+              return FutureBuilder<int>(
+                future: _getUnreadCount(user.uid),
+                builder: (context, unreadSnapshot) {
+                  int unreadCount = unreadSnapshot.data ?? 0;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: NetworkImage(user.photoURL),
                     ),
+                    title: Text('${user.firstName} ${user.lastName}'),
+                    trailing: unreadCount > 0
+                        ? Chip(label: Text('$unreadCount'))
+                        : null,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MessagesPage(
+                            receiverId: user.uid,
+                            senderId: FirebaseAuth.instance.currentUser!.uid,
+                          ),
+                        ),
+                      ).then((_) {
+                        // Refresh the unread count after navigating back
+                        (context as Element).reassemble();
+                      });
+                    },
                   );
                 },
               );
