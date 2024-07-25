@@ -4,9 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'MessagePage.dart';
 import '../Connections/user_model.dart';
 
-class MessageListPage extends StatelessWidget {
+class MessageListPage extends StatefulWidget {
   const MessageListPage({Key? key}) : super(key: key);
 
+  @override
+  _MessageListPageState createState() => _MessageListPageState();
+}
+
+class _MessageListPageState extends State<MessageListPage> {
   Future<List<UserModel>> _getMessageUsers() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
@@ -88,7 +93,24 @@ class MessageListPage extends StatelessWidget {
                     ),
                     title: Text('${user.firstName} ${user.lastName}'),
                     trailing: unreadCount > 0
-                        ? Chip(label: Text('$unreadCount'))
+                        ? Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.lightGreen,
+                        shape: BoxShape.circle, // Make the border a circle
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$unreadCount',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )
                         : null,
                     onTap: () {
                       Navigator.push(
@@ -100,8 +122,7 @@ class MessageListPage extends StatelessWidget {
                           ),
                         ),
                       ).then((_) {
-                        // Refresh the unread count after navigating back
-                        (context as Element).reassemble();
+                        setState(() {}); // Refresh the unread count after navigating back
                       });
                     },
                   );

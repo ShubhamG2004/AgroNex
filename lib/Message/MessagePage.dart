@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class MessagesPage extends StatefulWidget {
   final String receiverId;
@@ -15,6 +16,7 @@ class MessagesPage extends StatefulWidget {
 class _MessagesPageState extends State<MessagesPage> {
   final TextEditingController _messageController = TextEditingController();
   bool _hasUnreadMessages = false;
+  String? _firstUnreadMessageId;
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class _MessagesPageState extends State<MessagesPage> {
     if (unreadMessages.docs.isNotEmpty) {
       setState(() {
         _hasUnreadMessages = true;
+        _firstUnreadMessageId = unreadMessages.docs.first.id;
       });
     }
   }
@@ -51,11 +54,17 @@ class _MessagesPageState extends State<MessagesPage> {
         .where('seen', isEqualTo: false)
         .get();
 
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+
     for (var doc in querySnapshot.docs) {
-      await doc.reference.update({'seen': true});
+      batch.update(doc.reference, {'seen': true});
     }
+
+    await batch.commit();
+
     setState(() {
-      _hasUnreadMessages = false; // Reset the flag after marking as read
+      _hasUnreadMessages = false;
+      _firstUnreadMessageId = null; // Reset the flag and ID after marking as read
     });
   }
 
@@ -71,6 +80,11 @@ class _MessagesPageState extends State<MessagesPage> {
     });
 
     _messageController.clear();
+
+    setState(() {
+      _hasUnreadMessages = false;
+      _firstUnreadMessageId = null;
+    });
   }
 
   Future<Map<String, String>> _getUserProfile(String userId) async {
@@ -143,37 +157,65 @@ class _MessagesPageState extends State<MessagesPage> {
                 }
                 List<DocumentSnapshot> messages = snapshot.data!;
                 bool showUnreadText = _hasUnreadMessages;
+                List<int> unreadMessageIndexes = [];
+                String? lastMessageDate;
+
+                for (int i = 0; i < messages.length; i++) {
+                  if (!(messages[i].data() as Map<String, dynamic>)['seen']) {
+                    unreadMessageIndexes.add(i);
+                  }
+                }
 
                 return ListView.builder(
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     var message = messages[index];
-                    var time = (message['timestamp'] as Timestamp).toDate();
-                    var timeString = "${time.hour}:${time.minute}";
+                    var timestamp = message['timestamp'] as Timestamp;
+                    var time = timestamp.toDate();
+                    var timeString = DateFormat('HH:mm').format(time);
+                    var messageDate = DateFormat('dd MMMM yyyy').format(time);
 
                     bool isSender = message['senderId'] == widget.senderId;
                     Map<String, dynamic> messageData = message.data() as Map<String, dynamic>;
                     bool isSeen = messageData['seen'] ?? false;
 
-                    if (showUnreadText && !isSender && index == 0) {
-                      showUnreadText = false;
-                      return Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            margin: EdgeInsets.symmetric(vertical: 10),
-                            color: Colors.yellow,
+                    List<Widget> messageWidgets = [];
+
+                    if (messageDate != lastMessageDate) {
+                      lastMessageDate = messageDate;
+                      messageWidgets.add(
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Center(
                             child: Text(
-                              "Unread Messages",
+                              messageDate,
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
-                          _buildMessageBubble(messageData, isSender, timeString, isSeen),
-                        ],
+                        ),
                       );
                     }
 
-                    return _buildMessageBubble(messageData, isSender, timeString, isSeen);
+                    if (showUnreadText && unreadMessageIndexes.contains(index)) {
+                      showUnreadText = false;
+                      messageWidgets.add(
+                        Container(
+                          padding: EdgeInsets.all(0),
+                          margin: EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            "Unread Messages",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    }
+
+                    messageWidgets.add(_buildMessageBubble(messageData, isSender, timeString, isSeen));
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: messageWidgets,
+                    );
                   },
                 );
               },
@@ -230,11 +272,11 @@ class _MessagesPageState extends State<MessagesPage> {
             SizedBox(width: 8),
             Text(
               timeString,
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+              style: TextStyle(fontSize: 12, color: Colors.black),
             ),
             if (!isSeen && !isSender) ...[
               SizedBox(width: 8),
-              Icon(Icons.mark_email_unread, color: Colors.red, size: 16),
+              Icon(Icons.mark_email_unread, color: Colors.orange, size: 16),
             ],
           ],
         ),
