@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'profile/ProfilePage.dart';
 import 'Connections/ConnectionsPage.dart';
+import 'Message/MessageListPage.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({Key? key}) : super(key: key);
@@ -109,7 +110,10 @@ class _HomepageState extends State<Homepage> {
                     IconButton(
                       icon: Icon(Icons.message, color: Colors.black),
                       onPressed: () {
-                        // Implement message functionality here
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => MessageListPage()),
+                        );// Implement message functionality here
                       },
                     ),
                     IconButton(

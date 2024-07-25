@@ -1,20 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
+import '../Message/MessagePage.dart'; // Adjust the path if necessary
 
 class FollowingPage extends StatelessWidget {
   final List<UserModel> following;
 
   const FollowingPage({Key? key, required this.following}) : super(key: key);
 
+  Future<bool> _isUserFollowed(UserModel user) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      DocumentSnapshot followingDoc = await FirebaseFirestore.instance
+          .collection('following')
+          .doc(currentUser.uid)
+          .get();
+      Map<String, dynamic>? data = followingDoc.data() as Map<String, dynamic>?;
+      List<String> followingUserIds = List<String>.from(data?['following'] ?? []);
+      return followingUserIds.contains(user.uid);
+    }
+    return false;
+  }
+
+  Future<void> _sendMessage(UserModel receiver) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      CollectionReference messages = FirebaseFirestore.instance.collection('messages');
+
+      await messages.add({
+        'senderId': currentUser.uid,
+        'receiverId': receiver.uid,
+        'message': 'Hello!', // You can customize the message or use a text input to get this value
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> _openChat(UserModel receiver, BuildContext context) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      bool isFollowed = await _isUserFollowed(receiver);
+      if (isFollowed) {
+        await _sendMessage(receiver); // Send the message
+
+        // Navigate to the chat page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MessagesPage(
+              receiverId: receiver.uid,
+              senderId: currentUser.uid, // Pass sender ID to MessagesPage
+            ),
+          ),
+        );
+      } else {
+        // Show a message that the user is not followed
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('You are not following this user.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Following'),
-        backgroundColor: Colors.white, // Set app bar background color to white
+        backgroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Container(
-        color: Colors.white, // Set page background color to white
+        color: Colors.white,
         child: following.isNotEmpty
             ? ListView.builder(
           itemCount: following.length,
@@ -24,36 +84,37 @@ class FollowingPage extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey),
                 borderRadius: BorderRadius.circular(8),
-                color: Colors.white, // Set background color to white
+                color: Colors.white,
               ),
               margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: ListTile(
                 leading: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.green, width: 1.0), // Set border color to green and width to 2
-                    shape: BoxShape.circle, // Make the border a circle
+                    border: Border.all(color: Colors.green, width: 0.8),
+                    shape: BoxShape.circle,
                   ),
                   child: CircleAvatar(
                     backgroundImage: user.photoURL.isNotEmpty
                         ? NetworkImage(user.photoURL)
                         : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    radius: 22,
                   ),
                 ),
                 title: Text('${user.firstName} ${user.lastName}'),
                 subtitle: Text(user.position),
                 trailing: IconButton(
-                  onPressed: () {
-                    // Define what happens when the button is pressed
-                    print('Message ${user.firstName}');
-                  },
-                  icon: Icon(Icons.message, color: Colors.green), // Set message icon with green color
+                  onPressed: () => _openChat(user, context),
+                  icon: Transform.scale(
+                    scale: 1.3,
+                    child: Icon(Icons.message, color: Colors.green),
+                  ),
                 ),
               ),
             );
           },
         )
             : Center(
-          child: Text('No following users yet', style: TextStyle(color: Colors.black)), // Set text color to black
+          child: Text('No following users yet', style: TextStyle(color: Colors.black)),
         ),
       ),
     );
