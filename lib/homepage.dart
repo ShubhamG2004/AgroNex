@@ -21,11 +21,13 @@ class _HomepageState extends State<Homepage> {
   bool _isSearching = false;
   TextEditingController _searchController = TextEditingController();
   List<String> searchResults = ['Result 1', 'Result 2', 'Result 3'];
+  bool _hasUnreadMessages = false;
 
   @override
   void initState() {
     super.initState();
     fetchUserData();
+    _checkForUnreadMessages();
   }
 
   Future<void> fetchUserData() async {
@@ -36,6 +38,20 @@ class _HomepageState extends State<Homepage> {
           userData = doc.data() as Map<String, dynamic>?;
         });
       }
+    }
+  }
+
+  Future<void> _checkForUnreadMessages() async {
+    if (user != null) {
+      QuerySnapshot unreadMessages = await FirebaseFirestore.instance
+          .collection('messages')
+          .where('receiverId', isEqualTo: user!.uid)
+          .where('seen', isEqualTo: false)
+          .get();
+
+      setState(() {
+        _hasUnreadMessages = unreadMessages.docs.isNotEmpty;
+      });
     }
   }
 
@@ -107,14 +123,31 @@ class _HomepageState extends State<Homepage> {
                         });
                       },
                     ),
-                    IconButton(
-                      icon: Icon(Icons.message, color: Colors.black),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => MessageListPage()),
-                        );// Implement message functionality here
-                      },
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.message, color: Colors.black),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => MessageListPage()),
+                            );
+                          },
+                        ),
+                        if (_hasUnreadMessages)
+                          Positioned(
+                            right: 10,
+                            top: 10,
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     IconButton(
                       icon: Icon(Icons.account_circle, color: Colors.black),
