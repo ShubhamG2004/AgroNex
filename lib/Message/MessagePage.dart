@@ -1,8 +1,12 @@
+import 'dart:io'; // Ensure this import is present
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MessagesPage extends StatefulWidget {
   final String receiverId;
@@ -93,11 +97,13 @@ class _MessagesPageState extends State<MessagesPage> {
     _scrollToBottom();
   }
 
-  Future<void> _sendFile(String filePath) async {
+  Future<void> _sendFile(String fileName, String url, String fileType) async {
     await FirebaseFirestore.instance.collection('messages').add({
       'senderId': widget.senderId,
       'receiverId': widget.receiverId,
-      'file': filePath,
+      'fileName': fileName,
+      'fileURL': url,
+      'fileType': fileType,
       'timestamp': FieldValue.serverTimestamp(),
       'seen': false,
     });
@@ -130,7 +136,53 @@ class _MessagesPageState extends State<MessagesPage> {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null) {
       String filePath = result.files.single.path!;
-      _sendFile(filePath);
+      String fileName = result.files.single.name;
+      String fileExtension = fileName.split('.').last;
+      String fileType = fileExtension == 'pdf'
+          ? 'pdf'
+          : ['jpg', 'jpeg', 'png', 'gif'].contains(fileExtension)
+          ? 'image'
+          : 'file';
+
+      // Upload file to a cloud storage and get the download URL
+      String url = await _uploadFileToStorage(filePath, fileName);
+
+      _sendFile(fileName, url, fileType);
+    }
+  }
+
+  Future<String> _uploadFileToStorage(String filePath, String fileName) async {
+    // Implement file upload to cloud storage here
+    // Return the download URL of the uploaded file
+    return 'https://your_storage_url/$fileName';
+  }
+
+  Future<void> _downloadFile(String url) async {
+    try {
+      Dio dio = Dio();
+      String filename = url.split('/').last.split('?').first;
+      Directory directory = await getApplicationDocumentsDirectory();
+      String savePath = '${directory.path}/$filename';
+
+      await dio.download(url, savePath);
+    } catch (e) {
+      print("Error downloading file: $e");
+    }
+  }
+
+  Future<void> _openFile(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        final result = await OpenFile.open(path);
+        if (result.type != ResultType.done) {
+          print("Failed to open file: ${result.message}");
+        }
+      } else {
+        print("File does not exist at: $path");
+      }
+    } catch (e) {
+      print("Error opening file: $e");
     }
   }
 
@@ -200,8 +252,8 @@ class _MessagesPageState extends State<MessagesPage> {
                 Set<String> displayedDates = {};
 
                 for (var message in messages) {
-                  var timestamp = message['timestamp'] as Timestamp;
-                  var date = DateFormat('dd MMMM yyyy').format(timestamp.toDate());
+                  var timestamp = message['timestamp'] as Timestamp?;
+                  var date = timestamp != null ? DateFormat('dd MMMM yyyy').format(timestamp.toDate()) : 'Unknown Date';
 
                   if (!messagesByDate.containsKey(date)) {
                     messagesByDate[date] = [];
@@ -226,33 +278,98 @@ class _MessagesPageState extends State<MessagesPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          child: Center(
-                            child: Text(
-                              date,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          alignment: Alignment.center,
+                          child: Text(
+                            date,
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ),
-                        if (showUnreadText) ...[
-                          Container(
-                            padding: EdgeInsets.all(0),
-                            margin: EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              "Unread Messages",
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
                         ...messagesOnDate.map((message) {
-                          var timestamp = message['timestamp'] as Timestamp;
-                          var time = timestamp.toDate();
-                          var timeString = DateFormat('HH:mm').format(time);
-                          var messageData = message.data() as Map<String, dynamic>;
                           bool isSender = message['senderId'] == widget.senderId;
-                          bool isSeen = messageData['seen'] ?? false;
+                          var timestamp = message['timestamp'] as Timestamp?;
+                          var time = timestamp != null ? DateFormat('HH:mm').format(timestamp.toDate()) : 'Unknown Time';
+                          bool showUnread = _hasUnreadMessages && message.id == _firstUnreadMessageId;
 
-                          return _buildMessageBubble(messageData, isSender, timeString, isSeen);
+                          var messageType = message['fileType'] ?? 'text';
+                          var messageContent = messageType == 'text'
+                              ? message['message']
+                              : messageType == 'image'
+                              ? message['fileURL']
+                              : message['fileName'];
+
+                          return Column(
+                            children: [
+                              if (showUnread) _buildUnreadMessagesIndicator(),
+                              Container(
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                                child: Column(
+                                  crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    if (messageType == 'text')
+                                      Container(
+                                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                                        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                                        decoration: BoxDecoration(
+                                          color: isSender ? Colors.green : Colors.grey[300],
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          messageContent,
+                                          style: TextStyle(color: isSender ? Colors.white : Colors.black),
+                                        ),
+                                      )
+                                    else if (messageType == 'image')
+                                      GestureDetector(
+                                        onTap: () {
+                                          // Implement full screen image view here
+                                        },
+                                        child: Container(
+                                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                                          child: Image.network(messageContent),
+                                        ),
+                                      )
+                                    else
+                                      GestureDetector(
+                                        onTap: () async {
+                                          Directory directory = await getApplicationDocumentsDirectory();
+                                          String savePath = '${directory.path}/${messageContent}';
+                                          await _downloadFile(message['fileURL']);
+                                          await _openFile(savePath);
+                                        },
+                                        child: Container(
+                                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                                          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                                          decoration: BoxDecoration(
+                                            color: isSender ? Colors.green : Colors.grey[300],
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.insert_drive_file, color: isSender ? Colors.white : Colors.black),
+                                              SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  messageContent,
+                                                  style: TextStyle(color: isSender ? Colors.white : Colors.black),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    SizedBox(height: 5),
+                                    Text(
+                                      time,
+                                      style: TextStyle(color: Colors.grey, fontSize: 10),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
                         }).toList(),
                       ],
                     );
@@ -262,22 +379,15 @@ class _MessagesPageState extends State<MessagesPage> {
             ),
           ),
           if (_isEmojiPickerVisible)
-            SizedBox(
-              height: 250,
-              child: EmojiPicker(
-                onEmojiSelected: (category, emoji) {
-                  _messageController.text += emoji.emoji;
-                },
-                config: Config(
-                  emojiSizeMax: 32,
-                  verticalSpacing: 0,
-                  horizontalSpacing: 0,
-                  gridPadding: EdgeInsets.zero,
-                ),
-              ),
+            EmojiPicker(
+              onEmojiSelected: (category, emoji) {
+                _messageController.text += emoji.emoji;
+              },
+
             ),
-          Padding(
-            padding: const EdgeInsets.only(left: 20.0, right: 8.0, top: 8.0, bottom: 8.0),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            color: Colors.grey[200],
             child: Row(
               children: [
                 IconButton(
@@ -288,22 +398,18 @@ class _MessagesPageState extends State<MessagesPage> {
                     });
                   },
                 ),
-                IconButton(
-                  icon: Icon(Icons.attach_file),
-                  onPressed: _pickFile,
-                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
                     decoration: InputDecoration(
-                      hintText: 'Enter your message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      contentPadding: EdgeInsets.all(8.0),
+                      hintText: 'Type a message...',
+                      border: InputBorder.none,
                     ),
-                    style: TextStyle(fontSize: 14.0),
                   ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.attach_file),
+                  onPressed: _pickFile,
                 ),
                 IconButton(
                   icon: Icon(Icons.send),
@@ -317,41 +423,25 @@ class _MessagesPageState extends State<MessagesPage> {
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> messageData, bool isSender, String timeString, bool isSeen) {
-    bool isFile = messageData.containsKey('file');
-    return Align(
-      alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-        decoration: BoxDecoration(
-          color: isSender ? Colors.green[100] : Colors.blue[100],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isFile)
-              Icon(Icons.insert_drive_file, color: Colors.grey),
-            if (isFile)
-              SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                isFile ? 'File: ${messageData['file']}' : messageData['message'],
-                style: TextStyle(fontSize: 16),
-              ),
+  Widget _buildUnreadMessagesIndicator() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(color: Colors.grey),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              'Unread messages',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
-            SizedBox(width: 8),
-            Text(
-              timeString,
-              style: TextStyle(fontSize: 12, color: Colors.black),
-            ),
-            if (!isSeen && !isSender) ...[
-              SizedBox(width: 8),
-              Icon(Icons.mark_email_unread, color: Colors.orange, size: 16),
-            ],
-          ],
-        ),
+          ),
+          Expanded(
+            child: Divider(color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
