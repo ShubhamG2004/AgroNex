@@ -434,7 +434,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             style: TextStyle(fontSize: 12.0, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 15.0),
+          SizedBox(height: 12.0),
           ElevatedButton(
             onPressed: isRequested ? () => cancelFollowRequest(user) : () => sendFollowRequest(user),
             style: ElevatedButton.styleFrom(

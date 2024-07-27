@@ -20,10 +20,49 @@ class FollowRequestsPage extends StatefulWidget {
 }
 
 class _FollowRequestsPageState extends State<FollowRequestsPage> {
+  late List<UserModel> _followRequests;
+
   @override
   void initState() {
     super.initState();
-    // Fetch follow requests if needed, or use the provided followRequests
+    _followRequests = widget.followRequests;
+  }
+
+  void _handleAccept(UserModel user) async {
+    await widget.onAccept(user);
+    setState(() {
+      _followRequests.remove(user);
+    });
+  }
+
+  void _handleIgnore(UserModel user) async {
+    await widget.onIgnore(user);
+    setState(() {
+      _followRequests.remove(user);
+    });
+
+    // Remove the follow request from Firestore
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      String currentUserId = currentUser.uid;
+      String followRequestId = user.uid;
+
+      try {
+        await FirebaseFirestore.instance
+            .collection('followRequests')
+            .doc(currentUserId)
+            .collection('requests')
+            .doc(followRequestId)
+            .delete()
+            .then((_) {
+          print('Follow request deleted from Firestore.');
+        });
+      } catch (e) {
+        print('Failed to delete follow request: $e');
+      }
+    } else {
+      print('No current user found.');
+    }
   }
 
   @override
@@ -32,14 +71,14 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
       appBar: AppBar(
         title: Text('Follow Requests'),
       ),
-      body: widget.followRequests.isEmpty
+      body: _followRequests.isEmpty
           ? Center(
         child: Text('No follow requests'),
       )
           : ListView.builder(
-        itemCount: widget.followRequests.length,
+        itemCount: _followRequests.length,
         itemBuilder: (context, index) {
-          UserModel user = widget.followRequests[index];
+          UserModel user = _followRequests[index];
           return Card(
             margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
             child: ListTile(
@@ -47,7 +86,8 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
                 radius: 18,
                 backgroundImage: user.photoURL.isNotEmpty
                     ? NetworkImage(user.photoURL)
-                    : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    : AssetImage('assets/images/default_avatar.png')
+                as ImageProvider,
               ),
               title: Text('${user.firstName} ${user.lastName}'),
               subtitle: Text('wants to follow you'),
@@ -55,7 +95,7 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ElevatedButton(
-                    onPressed: () => widget.onAccept(user),
+                    onPressed: () => _handleAccept(user),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.green,
@@ -69,7 +109,7 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
                   ),
                   SizedBox(width: 4),
                   ElevatedButton(
-                    onPressed: () => widget.onIgnore(user),
+                    onPressed: () => _handleIgnore(user),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.red,

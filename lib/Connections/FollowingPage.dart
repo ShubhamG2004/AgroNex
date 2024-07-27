@@ -4,10 +4,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
 import '../Message/MessagePage.dart'; // Adjust the path if necessary
 
-class FollowingPage extends StatelessWidget {
+class FollowingPage extends StatefulWidget {
   final List<UserModel> following;
 
   const FollowingPage({Key? key, required this.following}) : super(key: key);
+
+  @override
+  _FollowingPageState createState() => _FollowingPageState();
+}
+
+class _FollowingPageState extends State<FollowingPage> {
+  List<UserModel> _filteredFollowing = [];
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredFollowing = widget.following;
+  }
 
   Future<bool> _isUserFollowed(UserModel user) async {
     User? currentUser = FirebaseAuth.instance.currentUser;
@@ -48,6 +62,18 @@ class FollowingPage extends StatelessWidget {
     }
   }
 
+  void _filterFollowing(String query) {
+    List<UserModel> filteredList = widget.following.where((followingUser) {
+      String fullName = '${followingUser.firstName} ${followingUser.lastName}'.toLowerCase();
+      return fullName.contains(query.toLowerCase());
+    }).toList();
+
+    setState(() {
+      _filteredFollowing = filteredList;
+      _searchQuery = query;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,49 +82,71 @@ class FollowingPage extends StatelessWidget {
         backgroundColor: Colors.green, // Adjust color as needed
         elevation: 0,
       ),
-      body: Container(
-        color: Colors.white,
-        child: following.isNotEmpty
-            ? ListView.builder(
-          itemCount: following.length,
-          itemBuilder: (context, index) {
-            UserModel user = following[index];
-            return Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white,
-              ),
-              margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              child: ListTile(
-                leading: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.green, width: 0.8),
-                    shape: BoxShape.circle,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Container(
+              height: 45,
+              child: TextField(
+                onChanged: _filterFollowing,
+                decoration: InputDecoration(
+                  labelText: 'Search Following',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
-                  child: CircleAvatar(
-                    backgroundImage: user.photoURL.isNotEmpty
-                        ? NetworkImage(user.photoURL)
-                        : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                    radius: 22,
-                  ),
-                ),
-                title: Text('${user.firstName} ${user.lastName}'),
-                subtitle: Text(user.position),
-                trailing: IconButton(
-                  onPressed: () => _openChat(user, context),
-                  icon: Icon(Icons.message, color: Colors.green),
+                  prefixIcon: Icon(Icons.search),
                 ),
               ),
-            );
-          },
-        )
-            : Center(
-          child: Text(
-            'No following users yet',
-            style: TextStyle(color: Colors.black),
+            ),
           ),
-        ),
+          Expanded(
+            child: Container(
+              color: Colors.white,
+              child: _filteredFollowing.isNotEmpty
+                  ? ListView.builder(
+                itemCount: _filteredFollowing.length,
+                itemBuilder: (context, index) {
+                  UserModel user = _filteredFollowing[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white,
+                    ),
+                    margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    child: ListTile(
+                      leading: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.green, width: 0.8),
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircleAvatar(
+                          backgroundImage: user.photoURL.isNotEmpty
+                              ? NetworkImage(user.photoURL)
+                              : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                          radius: 22,
+                        ),
+                      ),
+                      title: Text('${user.firstName} ${user.lastName}'),
+                      subtitle: Text(user.position),
+                      trailing: IconButton(
+                        onPressed: () => _openChat(user, context),
+                        icon: Icon(Icons.message, color: Colors.green),
+                      ),
+                    ),
+                  );
+                },
+              )
+                  : Center(
+                child: Text(
+                  'No following users yet',
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
