@@ -4,89 +4,26 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'user_model.dart';
 
 class FollowRequestsPage extends StatefulWidget {
+  final List<UserModel> followRequests;
+  final Function(UserModel) onAccept;
+  final Function(UserModel) onIgnore;
+
+  const FollowRequestsPage({
+    Key? key,
+    required this.followRequests,
+    required this.onAccept,
+    required this.onIgnore,
+  }) : super(key: key);
+
   @override
   _FollowRequestsPageState createState() => _FollowRequestsPageState();
 }
 
 class _FollowRequestsPageState extends State<FollowRequestsPage> {
-  List<UserModel> followRequests = [];
-
   @override
   void initState() {
     super.initState();
-    fetchFollowRequests();
-  }
-
-  Future<void> fetchFollowRequests() async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser != null) {
-      try {
-        QuerySnapshot snapshot = await FirebaseFirestore.instance
-            .collection('follow_requests')
-            .where('toUserId', isEqualTo: currentUser.uid)
-            .get();
-
-        List<UserModel> requests = [];
-        for (var doc in snapshot.docs) {
-          var fromUserId = doc['fromUserId'];
-          var userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(fromUserId)
-              .get();
-          var user = UserModel.fromDocument(userDoc);
-          requests.add(user);
-        }
-
-        setState(() {
-          followRequests = requests;
-        });
-      } catch (e) {
-        print('Error fetching follow requests: $e');
-      }
-    } else {
-      print('User is not authenticated');
-    }
-  }
-
-  Future<void> acceptFollowRequest(UserModel user) async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser != null) {
-      try {
-        await FirebaseFirestore.instance.collection('followers').doc(user.uid).update({
-          'followers': FieldValue.arrayUnion([currentUser.uid]),
-        });
-
-        await FirebaseFirestore.instance.collection('following').doc(currentUser.uid).update({
-          'following': FieldValue.arrayUnion([user.uid]),
-        });
-
-        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
-
-        setState(() {
-          followRequests.removeWhere((request) => request.uid == user.uid);
-        });
-      } catch (e) {
-        print('Error accepting follow request: $e');
-      }
-    }
-  }
-
-  Future<void> ignoreFollowRequest(UserModel user) async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser != null) {
-      try {
-        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
-
-        setState(() {
-          followRequests.removeWhere((request) => request.uid == user.uid);
-        });
-      } catch (e) {
-        print('Error ignoring follow request: $e');
-      }
-    }
+    // Fetch follow requests if needed, or use the provided followRequests
   }
 
   @override
@@ -95,14 +32,14 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
       appBar: AppBar(
         title: Text('Follow Requests'),
       ),
-      body: followRequests.isEmpty
+      body: widget.followRequests.isEmpty
           ? Center(
         child: Text('No follow requests'),
       )
           : ListView.builder(
-        itemCount: followRequests.length,
+        itemCount: widget.followRequests.length,
         itemBuilder: (context, index) {
-          UserModel user = followRequests[index];
+          UserModel user = widget.followRequests[index];
           return Card(
             margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
             child: ListTile(
@@ -118,7 +55,7 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ElevatedButton(
-                    onPressed: () => acceptFollowRequest(user),
+                    onPressed: () => widget.onAccept(user),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.green,
@@ -132,7 +69,7 @@ class _FollowRequestsPageState extends State<FollowRequestsPage> {
                   ),
                   SizedBox(width: 4),
                   ElevatedButton(
-                    onPressed: () => ignoreFollowRequest(user),
+                    onPressed: () => widget.onIgnore(user),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.red,

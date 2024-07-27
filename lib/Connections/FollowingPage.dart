@@ -28,21 +28,20 @@ class FollowingPage extends StatelessWidget {
     if (currentUser != null) {
       bool isFollowed = await _isUserFollowed(receiver);
       if (isFollowed) {
-        // Navigate to the chat page without sending a message
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => MessagesPage(
               receiverId: receiver.uid,
-              senderId: currentUser.uid, // Pass sender ID to MessagesPage
+              senderId: currentUser.uid,
             ),
           ),
         );
       } else {
-        // Show a message that the user is not followed
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('You are not following this user.'),
+            backgroundColor: Colors.red, // Adjust color as needed
           ),
         );
       }
@@ -95,7 +94,10 @@ class FollowingPage extends StatelessWidget {
           },
         )
             : Center(
-          child: Text('No following users yet', style: TextStyle(color: Colors.black)),
+          child: Text(
+            'No following users yet',
+            style: TextStyle(color: Colors.black),
+          ),
         ),
       ),
     );
