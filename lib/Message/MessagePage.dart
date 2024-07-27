@@ -473,7 +473,7 @@ class _MessagesPageState extends State<MessagesPage> {
             children: [
               Icon(Icons.insert_drive_file, color: Colors.grey),
               SizedBox(width: 0),
-              Text(fileName, style: TextStyle(fontSize: 16)),
+              Text(fileName, style: TextStyle(fontSize: 14)),
             ],
           ),
           Row(

@@ -22,6 +22,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
   bool isLoading = true;
   int followersCount = 0;
   int followingCount = 0;
+  Map<String, bool> followRequestSent = {};
 
   @override
   void initState() {
@@ -60,12 +61,30 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
           users = filteredUsers;
           isLoading = false;
         });
+
+        // Fetch follow request state for each user
+        for (var user in users) {
+          bool requestSent = await checkIfFollowRequestSent(user.uid);
+          setState(() {
+            followRequestSent[user.uid] = requestSent;
+          });
+        }
       } catch (e) {
         print('Error fetching users: $e');
       }
     } else {
       print('User is not authenticated');
     }
+  }
+
+  Future<bool> checkIfFollowRequestSent(String userId) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser != null) {
+      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('follow_requests').doc(userId).get();
+      return doc.exists;
+    }
+    return false;
   }
 
   Future<void> fetchFollowRequests() async {
@@ -169,8 +188,27 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
           'toUserId': user.uid,
         });
         print('Follow request sent to ${user.uid}');
+        setState(() {
+          followRequestSent[user.uid] = true;
+        });
       } catch (e) {
         print('Error sending follow request: $e');
+      }
+    }
+  }
+
+  Future<void> cancelFollowRequest(UserModel user) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser != null) {
+      try {
+        await FirebaseFirestore.instance.collection('follow_requests').doc(user.uid).delete();
+        print('Follow request cancelled for ${user.uid}');
+        setState(() {
+          followRequestSent[user.uid] = false;
+        });
+      } catch (e) {
+        print('Error cancelling follow request: $e');
       }
     }
   }
@@ -235,258 +273,106 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: isLoading
-            ? CircularProgressIndicator()
-            : SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 2.0), // Reduced height
-              Padding(
-                padding: const EdgeInsets.fromLTRB(35.0, 0.0, 35.0, 0.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0), // Decrease the padding here
-                        child: _buildStatCard('Followers', followersCount, isNavigable: true, followers: followers),
-                      ),
-                    ),
-                    SizedBox(width: 5), // Space between the cards
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0), // Decrease the padding here
-                        child: _buildStatCard('Following', followingCount, isNavigable: true, following: followingUsers),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 10),
-              Container(
-                color: Colors.grey,
-                height: 0.5, // Reduced height
-                width: double.infinity,
-              ),
-              SizedBox(height: 8), // Space between the border and follow requests
-              if (followRequests.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Follow Requests',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.arrow_forward),
-                            color: Colors.black,
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => FollowRequestsPage(),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: BorderSide(color: Colors.grey, width: 0.5),
-                        ),
-                        child: Container(
-                          padding: EdgeInsets.all(8.0),
-                          child: Column(
-                            children: followRequests.map((request) {
-                              return ListTile(
-                                contentPadding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                                leading: CircleAvatar(
-                                  radius: 18,
-                                  backgroundImage: request.photoURL.isNotEmpty
-                                      ? NetworkImage(request.photoURL)
-                                      : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                                ),
-                                title: Text('${request.firstName} ${request.lastName}'),
-                                subtitle: Text('${request.firstName} wants to follow you'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ElevatedButton(
-                                      onPressed: () => acceptFollowRequest(request),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      ),
-                                      child: Text('Accept'),
-                                    ),
-                                    SizedBox(width: 8),
-                                    ElevatedButton(
-                                      onPressed: () => ignoreFollowRequest(request),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      ),
-                                      child: Text('Ignore'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (users.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 8), // Space between the border and user profile cards
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Users You might Be Follow',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        ],
-                      ),
-                      GridView.builder(
-                        shrinkWrap: true, // Allows GridView to take only the space it needs
-                        physics: NeverScrollableScrollPhysics(), // Disables GridView scrolling
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 8.0,
-                          mainAxisSpacing: 8.0,
-                          childAspectRatio: 0.74,
-                        ),
-                        itemCount: users.length,
-                        itemBuilder: (context, index) {
-                          UserModel user = users[index];
-                          return GestureDetector(
-                            onTap: () {
-                              debugPrint('Card tapped for ${user.firstName} ${user.lastName}');
-                            },
-                            child: Card(
-                              color: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.0),
-                                side: BorderSide(color: Colors.grey, width: 0.5),
-                              ),
-                              child: Container(
-                                padding: EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 50,
-                                      backgroundImage: user.photoURL.isNotEmpty
-                                          ? NetworkImage(user.photoURL)
-                                          : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '${user.firstName} ${user.lastName}',
-                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      '${user.position}',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                                    ),
-                                    SizedBox(height: 8),
-                                    ElevatedButton(
-                                      onPressed: () => sendFollowRequest(user),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: Colors.green,
-                                        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 35),
-                                        side: BorderSide(color: Colors.green, width: 1),
-                                      ),
-                                      child: Text('Follow'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
+      appBar: AppBar(
+        title: const Text('Connections'),
       ),
-    );
-  }
-
-  Widget _buildStatCard(String title, int count, {bool isNavigable = false, List<UserModel> followers = const [], List<UserModel> following = const []}) {
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.0),
-        side: BorderSide(color: Colors.grey, width: 0.5),
-      ),
-      child: InkWell(
-        onTap: () {
-          if (isNavigable) {
-            if (title == 'Followers') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FollowersPage(followers: followers),
-                ),
-              );
-            } else if (title == 'Following') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FollowingPage(following: following),
-                ),
-              );
-            }
-          }
-        },
-        child: Container(
-          padding: EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 4), // Reduced gap between text and count
-              Text(
-                count.toString(),
-                style: TextStyle(fontSize: 24, color: Colors.blue),
-              ),
-            ],
-          ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('Followers: $followersCount, Following: $followingCount'),
+            ),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                UserModel user = users[index];
+                bool isRequestSent = followRequestSent[user.uid] ?? false;
+                return Card(
+                  child: ListTile(
+                    title: Text(user.username ?? 'No Username'),
+                    subtitle: Text(user.email ?? 'No Email'),
+                    trailing: ElevatedButton(
+                      onPressed: () {
+                        if (isRequestSent) {
+                          cancelFollowRequest(user);
+                        } else {
+                          sendFollowRequest(user);
+                        }
+                      },
+                      child: Text(isRequestSent ? 'Request Sent' : 'Follow'),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16.0),
+            const Text('Follow Requests', style: TextStyle(fontSize: 20.0)),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: followRequests.length,
+              itemBuilder: (context, index) {
+                UserModel user = followRequests[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(user.username ?? 'No Username'),
+                    subtitle: Text(user.email ?? 'No Email'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => acceptFollowRequest(user),
+                          child: const Text('Accept'),
+                        ),
+                        const SizedBox(width: 8.0),
+                        ElevatedButton(
+                          onPressed: () => ignoreFollowRequest(user),
+                          child: const Text('Ignore'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16.0),
+            const Text('Followers', style: TextStyle(fontSize: 20.0)),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: followers.length,
+              itemBuilder: (context, index) {
+                UserModel user = followers[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(user.username ?? 'No Username'),
+                    subtitle: Text(user.email ?? 'No Email'),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16.0),
+            const Text('Following', style: TextStyle(fontSize: 20.0)),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: followingUsers.length,
+              itemBuilder: (context, index) {
+                UserModel user = followingUsers[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(user.username ?? 'No Username'),
+                    subtitle: Text(user.email ?? 'No Email'),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
