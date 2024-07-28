@@ -260,6 +260,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
         appBar: AppBar(
           title: Text('Connections'),
         ),
+
         body: Center(
           child: CircularProgressIndicator(),
         ),
@@ -269,7 +270,9 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Connections'),
+        backgroundColor: Colors.lightGreen[50],
       ),
+      backgroundColor: Colors.lightGreen[50] ,
       body: RefreshIndicator(
         onRefresh: fetchUsers,
         child: SingleChildScrollView(
@@ -277,24 +280,24 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
                 child: Row(
                   children: [
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
+                        padding: const EdgeInsets.fromLTRB(10.0, 1.0, 10.0, 0.0),
                         child: _buildStatCard('Followers', followersCount, isNavigable: true, followers: followers),
                       ),
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
+                        padding: const EdgeInsets.fromLTRB(10.0, 1.0, 10.0, 0.0),
                         child: _buildStatCard('Following', followingCount, isNavigable: true, followingUsers: followingUsers),
                       ),
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
+                        padding: const EdgeInsets.fromLTRB(10.0, 1.0, 10.0, 0.0),
                         child: _buildStatCard('Requests', followRequests.length, isNavigable: true, followRequests: followRequests),
                       ),
                     ),
