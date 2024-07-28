@@ -260,19 +260,28 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
         appBar: AppBar(
           title: Text('Connections'),
         ),
-
+        backgroundColor: Colors.white,
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text(
+                  'Loading...',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Connections'),
-        backgroundColor: Colors.lightGreen[50],
-      ),
-      backgroundColor: Colors.lightGreen[50] ,
+      backgroundColor: Colors.white,
       body: RefreshIndicator(
         onRefresh: fetchUsers,
         child: SingleChildScrollView(
@@ -285,19 +294,19 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                   children: [
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 1.0, 10.0, 0.0),
+                        padding: const EdgeInsets.fromLTRB(10.0, 15.0, 10.0, 0.0),
                         child: _buildStatCard('Followers', followersCount, isNavigable: true, followers: followers),
                       ),
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 1.0, 10.0, 0.0),
+                        padding: const EdgeInsets.fromLTRB(10.0, 15.0, 10.0, 0.0),
                         child: _buildStatCard('Following', followingCount, isNavigable: true, followingUsers: followingUsers),
                       ),
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10.0, 1.0, 10.0, 0.0),
+                        padding: const EdgeInsets.fromLTRB(10.0, 15.0, 10.0, 0.0),
                         child: _buildStatCard('Requests', followRequests.length, isNavigable: true, followRequests: followRequests),
                       ),
                     ),
@@ -401,9 +410,13 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(
+          color: Colors.grey, // Color of the border
+          width: 0.5, // Width of the border
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 1,
             blurRadius: 3,
           ),

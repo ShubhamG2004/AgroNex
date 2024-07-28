@@ -290,11 +290,12 @@ class _HomepageState extends State<Homepage> {
           ],
           currentIndex: _selectedIndex,
           selectedItemColor: Colors.green,
-          unselectedItemColor: Colors.grey,
+          unselectedItemColor: Colors.black54,
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed, // To keep all items visible
           selectedFontSize: 12,
           unselectedFontSize: 10,
+          // unselectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
           selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), // bold
         ),
       ),
