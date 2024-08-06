@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'profile/ProfilePage.dart';
 import 'Connections/ConnectionsPage.dart';
 import 'Message/MessageListPage.dart';
+import './Post/PostPage.dart';
+import './Post/FeedPage.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({Key? key}) : super(key: key);
@@ -16,7 +18,6 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   final user = FirebaseAuth.instance.currentUser;
   int _selectedIndex = 0;
-  Map<String, dynamic>? userData;
   PageController _pageController = PageController();
   bool _isSearching = false;
   TextEditingController _searchController = TextEditingController();
@@ -26,19 +27,7 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
-    fetchUserData();
     _checkForUnreadMessages();
-  }
-
-  Future<void> fetchUserData() async {
-    if (user != null) {
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
-      if (mounted) {
-        setState(() {
-          userData = doc.data() as Map<String, dynamic>?;
-        });
-      }
-    }
   }
 
   Future<void> _checkForUnreadMessages() async {
@@ -55,18 +44,23 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
-  signout() async {
+  Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
     await GoogleSignIn().signOut();
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login'); // Example of navigation to login page
+      Navigator.pushReplacementNamed(context, '/login'); // Navigate to login page
     }
   }
 
   void _onItemTapped(int index) {
     if (index == 2) {
-      return;
+      // Navigate to PostPage on 'Post' tab click
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PostPage()),
+      );
     } else {
+      // Update the selected index and page view controller
       setState(() {
         _selectedIndex = index;
       });
@@ -177,70 +171,23 @@ class _HomepageState extends State<Homepage> {
           ),
         ),
       ),
-      body: Stack(
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
         children: [
-          PageView(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            children: [
-              Center(
-                child: userData != null
-                    ? Card(
-                  elevation: 4,
-                  margin: EdgeInsets.all(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundImage: userData!['photoURL'] != null
-                              ? NetworkImage(userData!['photoURL'])
-                              : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          '${userData!['firstName']} ${userData!['lastName']}',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 8),
-                        Text(userData!['email']),
-                      ],
-                    ),
-                  ),
-                )
-                    : CircularProgressIndicator(),
-              ),
-              ConnectionsPage(),
-              Center(child: Text('Placeholder for Post Page')), // Placeholder for Post page
-              Center(child: Text('Blog Page')), // Placeholder for Blog page
-              Center(child: Text('Notifications Page')), // Placeholder for Notifications page
-            ],
-          ),
-          if (_isSearching)
-            Container(
-              color: Colors.white,
-              child: ListView.builder(
-                itemCount: searchResults.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(searchResults[index]),
-                    onTap: () {
-                      // Handle search result tap
-                    },
-                  );
-                },
-              ),
-            ),
+          FeedPage(), // Integrate FeedPage here
+          ConnectionsPage(),
+          Center(child: Text('Placeholder for Post Page')), // Placeholder for Post page
+          Center(child: Text('Blog Page')), // Placeholder for Blog page
+          Center(child: Text('Notifications Page')), // Placeholder for Notifications page
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => signout(),
+        onPressed: _signOut,
         child: Icon(Icons.logout),
       ),
       bottomNavigationBar: Container(
@@ -295,7 +242,6 @@ class _HomepageState extends State<Homepage> {
           type: BottomNavigationBarType.fixed, // To keep all items visible
           selectedFontSize: 12,
           unselectedFontSize: 10,
-          // unselectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
           selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold), // bold
         ),
       ),
