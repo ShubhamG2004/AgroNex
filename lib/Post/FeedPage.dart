@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import '../Connections/user_model.dart'; // Import your UserModel class
 
 class FeedPage extends StatefulWidget {
@@ -10,7 +8,7 @@ class FeedPage extends StatefulWidget {
 }
 
 class _FeedPageState extends State<FeedPage> {
-  List<bool> _isExpanded = [];
+  Map<int, bool> _isExpanded = {};
 
   // Function to format time difference
   String _formatTimeDifference(Timestamp timestamp) {
@@ -55,8 +53,6 @@ class _FeedPageState extends State<FeedPage> {
 
     postList.sort((a, b) => (b['post']['timestamp'] as Timestamp).compareTo(a['post']['timestamp'] as Timestamp)); // Sort by timestamp
 
-    _isExpanded = List<bool>.filled(postList.length, false); // Initialize _isExpanded list
-
     return postList;
   }
 
@@ -86,10 +82,12 @@ class _FeedPageState extends State<FeedPage> {
               final post = posts[index]['post'];
               final user = posts[index]['user'] as UserModel;
 
+              _isExpanded[index] = _isExpanded[index] ?? false;
+
               return Card(
-                margin: EdgeInsets.all(8),
+                margin: EdgeInsets.all(6),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(10.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -100,7 +98,7 @@ class _FeedPageState extends State<FeedPage> {
                                 ? NetworkImage(user.photoURL)
                                 : AssetImage('assets/images/default_avatar.png') as ImageProvider,
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: 4),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,11 +109,11 @@ class _FeedPageState extends State<FeedPage> {
                                 ),
                                 Text(
                                   user.position,
-                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
                                 ),
                                 Text(
                                   _formatTimeDifference(post['timestamp'] as Timestamp),
-                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  style: TextStyle(fontSize: 10, color: Colors.grey),
                                 ),
                               ],
                             ),
@@ -128,29 +126,56 @@ class _FeedPageState extends State<FeedPage> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        _isExpanded[index]
-                            ? post['thought']
-                            : (post['thought'] as String).length > 100
-                            ? '${(post['thought'] as String).substring(0, 100)}...'
-                            : post['thought'],
-                        maxLines: _isExpanded[index] ? null : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      if ((post['thought'] as String).length > 100)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _isExpanded[index] = !_isExpanded[index];
-                            });
-                          },
-                          child: Text(_isExpanded[index] ? 'Show Less' : 'See More'),
+                      SizedBox(height: 2),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    post['thought'],
+                                    maxLines: _isExpanded[index]! ? null : 1,
+                                    overflow: _isExpanded[index]! ? null : TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                if ((post['thought'] as String).length > 100 && !_isExpanded[index]!)
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _isExpanded[index] = !_isExpanded[index]!;
+                                      });
+                                    },
+                                    child: Text('See More'),
+                                    style: ButtonStyle(
+                                      padding: MaterialStateProperty.all(EdgeInsets.zero),
+                                      minimumSize: MaterialStateProperty.all(Size(0, 0)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if ((post['thought'] as String).length > 100 && _isExpanded[index]!)
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isExpanded[index] = !_isExpanded[index]!;
+                                  });
+                                },
+                                child: Text('Show Less'),
+                                style: ButtonStyle(
+                                  padding: MaterialStateProperty.all(EdgeInsets.zero),
+                                  minimumSize: MaterialStateProperty.all(Size(0, 0)),
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
                       if (post['photos'] != null && (post['photos'] as List).isNotEmpty)
                         Container(
-                          height: 200,
+                          height: 300,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: (post['photos'] as List).length,
