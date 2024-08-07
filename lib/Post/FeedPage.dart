@@ -9,6 +9,7 @@ class FeedPage extends StatefulWidget {
 
 class _FeedPageState extends State<FeedPage> {
   Map<int, bool> _isExpanded = {};
+  Map<int, PageController> _pageControllers = {};
 
   // Function to format time difference
   String _formatTimeDifference(Timestamp timestamp) {
@@ -51,7 +52,7 @@ class _FeedPageState extends State<FeedPage> {
       }
     }
 
-    postList.sort((a, b) => (b['post']['timestamp'] as Timestamp).compareTo(a['post']['timestamp'] as Timestamp)); // Sort by timestamp
+    postList.sort((a, b) => (b['post']['timestamp'] as Timestamp).compareTo(a['post']['timestamp'] as Timestamp));
 
     return postList;
   }
@@ -83,8 +84,10 @@ class _FeedPageState extends State<FeedPage> {
               final user = posts[index]['user'] as UserModel;
 
               _isExpanded[index] = _isExpanded[index] ?? false;
+              _pageControllers[index] = _pageControllers[index] ?? PageController();
 
               return Card(
+                color: Colors.white, // Set the background color of the card to white
                 margin: EdgeInsets.all(6),
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
@@ -128,7 +131,7 @@ class _FeedPageState extends State<FeedPage> {
                       ),
                       SizedBox(height: 2),
                       AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: 1), // Super fast duration
                         curve: Curves.easeInOut,
                         child: Column(
                           children: [
@@ -143,49 +146,61 @@ class _FeedPageState extends State<FeedPage> {
                                   ),
                                 ),
                                 if ((post['thought'] as String).length > 100 && !_isExpanded[index]!)
-                                  TextButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _isExpanded[index] = !_isExpanded[index]!;
-                                      });
-                                    },
-                                    child: Text('See More'),
-                                    style: ButtonStyle(
-                                      padding: MaterialStateProperty.all(EdgeInsets.zero),
-                                      minimumSize: MaterialStateProperty.all(Size(0, 0)),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 10.0),
+                                    child: TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _isExpanded[index] = !_isExpanded[index]!;
+                                        });
+                                      },
+                                      child: Text(_isExpanded[index]! ? 'See Less' : 'See More'),
                                     ),
                                   ),
                               ],
                             ),
-                            if ((post['thought'] as String).length > 100 && _isExpanded[index]!)
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _isExpanded[index] = !_isExpanded[index]!;
-                                  });
-                                },
-                                child: Text('Show Less'),
-                                style: ButtonStyle(
-                                  padding: MaterialStateProperty.all(EdgeInsets.zero),
-                                  minimumSize: MaterialStateProperty.all(Size(0, 0)),
-                                ),
-                              ),
                           ],
                         ),
                       ),
                       if (post['photos'] != null && (post['photos'] as List).isNotEmpty)
-                        Container(
-                          height: 300,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: (post['photos'] as List).length,
-                            itemBuilder: (context, photoIndex) {
-                              return Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: Image.network(post['photos'][photoIndex]),
-                              );
-                            },
-                          ),
+                        Stack(
+                          children: [
+                            Container(
+                              height: 300,
+                              child: PageView.builder(
+                                controller: _pageControllers[index],
+                                itemCount: (post['photos'] as List).length,
+                                itemBuilder: (context, photoIndex) {
+                                  return Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Image.network(post['photos'][photoIndex]),
+                                  );
+                                },
+                              ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              child: IconButton(
+                                icon: Icon(Icons.arrow_back),
+                                onPressed: () {
+                                  _pageControllers[index]!.previousPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+                                },
+                              ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              child: IconButton(
+                                icon: Icon(Icons.arrow_forward),
+                                onPressed: () {
+                                  _pageControllers[index]!.nextPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       SizedBox(height: 8),
                       Row(
@@ -231,15 +246,7 @@ class _FeedPageState extends State<FeedPage> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8),
-                      TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Write a comment...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
+                      // SizedBox(height: 8),
                     ],
                   ),
                 ),
