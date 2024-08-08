@@ -101,7 +101,7 @@ class _FeedPageState extends State<FeedPage> {
                                 ? NetworkImage(user.photoURL)
                                 : AssetImage('assets/images/default_avatar.png') as ImageProvider,
                           ),
-                          SizedBox(width: 4),
+                          SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

@@ -393,7 +393,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             SizedBox(height: 10.0),
             Text(
               count.toString(),
-              style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.blue),
+              style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.green),
             ),
           ],
         ),
