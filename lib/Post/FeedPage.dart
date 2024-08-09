@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:translator/translator.dart'; // Import a translation package if you want to use it
 import '../Connections/user_model.dart'; // Import your UserModel class
 
 class FeedPage extends StatefulWidget {
@@ -10,51 +11,16 @@ class FeedPage extends StatefulWidget {
 class _FeedPageState extends State<FeedPage> {
   Map<int, bool> _isExpanded = {};
   Map<int, PageController> _pageControllers = {};
+  Map<int, String> _translatedText = {}; // Store translated text for each post
 
-  // Function to format time difference
-  String _formatTimeDifference(Timestamp timestamp) {
-    final now = DateTime.now();
-    final postTime = timestamp.toDate();
-    final difference = now.difference(postTime);
+  final translator = GoogleTranslator(); // Initialize the translator
 
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes} minutes ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours} hours ago';
-    } else {
-      return '${difference.inDays} days ago';
-    }
-  }
-
-  // Function to fetch posts and user data
-  Future<List<Map<String, dynamic>>> _fetchPosts() async {
-    final userCollection = await FirebaseFirestore.instance.collection('users').get();
-    final List<Map<String, dynamic>> postList = [];
-
-    for (var userDoc in userCollection.docs) {
-      final userData = UserModel.fromDocument(userDoc);
-
-      final posts = await FirebaseFirestore.instance
-          .collection('blog')
-          .doc(userData.uid) // Access each user's posts
-          .collection('posts')
-          .orderBy('timestamp', descending: true)
-          .get();
-
-      for (var post in posts.docs) {
-        final postData = post.data();
-        postList.add({
-          'post': postData,
-          'user': userData,
-        });
-      }
-    }
-
-    postList.sort((a, b) => (b['post']['timestamp'] as Timestamp).compareTo(a['post']['timestamp'] as Timestamp));
-
-    return postList;
+  // Function to translate text
+  Future<void> _translateText(int index, String text, String languageCode) async {
+    final translation = await translator.translate(text, to: languageCode);
+    setState(() {
+      _translatedText[index] = translation.text;
+    });
   }
 
   @override
@@ -121,10 +87,32 @@ class _FeedPageState extends State<FeedPage> {
                               ],
                             ),
                           ),
-                          IconButton(
+                          PopupMenuButton<String>(
                             icon: Icon(Icons.more_horiz),
-                            onPressed: () {
-                              // Handle more options action
+                            onSelected: (value) async {
+                              if (value == 'hindi') {
+                                await _translateText(index, post['thought'], 'hi');
+                              } else if (value == 'tamil') {
+                                await _translateText(index, post['thought'], 'ta');
+                              } else if (value == 'telugu') {
+                                await _translateText(index, post['thought'], 'te');
+                              }
+                            },
+                            itemBuilder: (BuildContext context) {
+                              return [
+                                PopupMenuItem(
+                                  value: 'hindi',
+                                  child: Text('Convert to Hindi'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'tamil',
+                                  child: Text('Convert to Tamil'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'telugu',
+                                  child: Text('Convert to Telugu'),
+                                ),
+                              ];
                             },
                           ),
                         ],
@@ -139,7 +127,7 @@ class _FeedPageState extends State<FeedPage> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    post['thought'],
+                                    _translatedText[index] ?? post['thought'], // Display translated text if available
                                     maxLines: _isExpanded[index]! ? null : 1,
                                     overflow: _isExpanded[index]! ? null : TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 16),
@@ -183,7 +171,11 @@ class _FeedPageState extends State<FeedPage> {
                               top: 0,
                               bottom: 0,
                               child: IconButton(
-                                icon: Icon(Icons.arrow_back),
+                                icon: Icon(
+                                  Icons.arrow_back_ios,
+                                  size: 15, // Set the size of the icon
+                                  color: Colors.black, // Set the color of the icon
+                                ),
                                 onPressed: () {
                                   _pageControllers[index]!.previousPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
                                 },
@@ -194,7 +186,8 @@ class _FeedPageState extends State<FeedPage> {
                               top: 0,
                               bottom: 0,
                               child: IconButton(
-                                icon: Icon(Icons.arrow_forward),
+                                icon: Icon( Icons.arrow_forward_ios,size: 15,
+                                  color: Colors.black, ),
                                 onPressed: () {
                                   _pageControllers[index]!.nextPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
                                 },

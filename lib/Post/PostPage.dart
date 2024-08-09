@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'FeedPage.dart';
+import '/homepage.dart';
 
 class PostPage extends StatefulWidget {
   @override
@@ -15,7 +17,6 @@ class _PostPageState extends State<PostPage> {
   List<File> _selectedPhotos = []; // Store the selected photos
   List<String> _photoUrls = []; // Store the URLs of uploaded photos
 
-  // Method to handle photo upload
   void _addPhotos() async {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage();
@@ -47,8 +48,7 @@ class _PostPageState extends State<PostPage> {
         String fileName = DateTime.now().millisecondsSinceEpoch.toString();
         UploadTask uploadTask = FirebaseStorage.instance
             .ref()
-            .child('post_photos')
-            .child(fileName)
+            .child('post_photos/$uid/$fileName')
             .putFile(photo);
 
         TaskSnapshot taskSnapshot = await uploadTask;
@@ -78,8 +78,11 @@ class _PostPageState extends State<PostPage> {
         _photoUrls = [];
       });
 
-      // Navigate back
-      Navigator.pop(context);
+      // Navigate to FeedPage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Homepage()),
+      );
     }
   }
 
