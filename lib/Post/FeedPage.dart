@@ -20,6 +20,7 @@ class _FeedPageState extends State<FeedPage> {
   );
 
   // Method to fetch posts and user data
+  // Method to fetch posts and user data
   Future<List<Map<String, dynamic>>> _fetchPosts() async {
     final userCollection = await FirebaseFirestore.instance.collection('users').get();
     final List<Map<String, dynamic>> postList = [];
@@ -286,43 +287,81 @@ class _FeedPageState extends State<FeedPage> {
                                   itemCount: (post['photos'] as List).length,
                                   itemBuilder: (context, photoIndex) {
                                     return Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 10.0),
-                                      child: Image.network(
-                                        post['photos'][photoIndex],
-                                        fit: BoxFit.cover,
-                                      ),
+                                      padding: const EdgeInsets.all(4.0),
+                                      child: Image.network(post['photos'][photoIndex]),
                                     );
                                   },
                                 ),
                               ),
-
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: IconButton(
+                                  icon: Icon(
+                                    Icons.arrow_back_ios,
+                                    size: 15, // Set the size of the icon
+                                    color: Colors.black, // Set the color of the icon
+                                  ),
+                                  onPressed: () {
+                                    _pageControllers[index]!.previousPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+                                  },
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: IconButton(
+                                  icon: Icon(Icons.arrow_forward_ios, size: 15, color: Colors.black),
+                                  onPressed: () {
+                                    _pageControllers[index]!.nextPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+                                  },
+                                ),
+                              ),
                             ],
                           ),
-                        SizedBox(height: 10),
+                        SizedBox(height: 8),
                         Row(
                           children: [
-                            IconButton(
-                              icon: Icon(
-                                post['hasLiked'] ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
-                                color: post['hasLiked'] ? Colors.blue : Colors.green,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: IconButton(
+                                      icon: Icon(
+                                        post['hasLiked'] ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+                                        color: post['hasLiked'] ? Colors.blue : Colors.grey,
+                                      ),
+                                      onPressed: () async {
+                                        await _toggleLike(user.uid, post['id'], post['hasLiked']);
+                                        setState(() {
+                                          post['hasLiked'] = !post['hasLiked'];
+                                          post['likes'] = post['hasLiked']
+                                              ? (post['likes'] as int) + 1
+                                              : (post['likes'] as int) - 1;
+                                        });
+                                      },
+                                    ),
+                                  ),
+
+                                  Expanded(
+                                    child: IconButton(
+                                      icon: Icon(Icons.comment),
+                                      onPressed: () {},
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: IconButton(
+                                      icon: Icon(Icons.share),
+                                      onPressed: () {
+                                        final postId = post['id']; // Get the post ID
+                                        _shareContent(post['thought'], postId);
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                              onPressed: () async {
-                                await _toggleLike(user.uid, post['id'], post['hasLiked']);
-                                setState(() {
-                                  post['hasLiked'] = !post['hasLiked'];
-                                  post['likes'] = post['hasLiked']
-                                      ? (post['likes'] as int) + 1
-                                      : (post['likes'] as int) - 1;
-                                });
-                              },
-                            ),
-                            Text('${post['likes']} Likes'),
-                            Spacer(),
-                            IconButton(
-                              icon: Icon(Icons.share),
-                              onPressed: () {
-                                _shareContent(post['thought'], post['id']);
-                              },
                             ),
                           ],
                         ),
@@ -336,13 +375,5 @@ class _FeedPageState extends State<FeedPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    // Dispose of PageControllers
-    _pageControllers.forEach((_, controller) => controller.dispose());
-    _onDeviceTranslator.close(); // Dispose of translator instance
-    super.dispose();
   }
 }
