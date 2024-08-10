@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart'; // Import the translation package
+import 'package:share_plus/share_plus.dart'; // Import the share_plus package
 import '../Connections/user_model.dart'; // Import your UserModel class
 
 class FeedPage extends StatefulWidget {
@@ -10,34 +12,74 @@ class FeedPage extends StatefulWidget {
 class _FeedPageState extends State<FeedPage> {
   Map<int, bool> _isExpanded = {};
   Map<int, PageController> _pageControllers = {};
+  Map<int, String> _translatedText = {}; // Store translated text for each post
+
+  late final OnDeviceTranslator _onDeviceTranslator = OnDeviceTranslator(
+    sourceLanguage: TranslateLanguage.english,
+    targetLanguage: TranslateLanguage.hindi, // Default language
+  );
 
   // Method to fetch posts and user data
   Future<List<Map<String, dynamic>>> _fetchPosts() async {
     final userCollection = await FirebaseFirestore.instance.collection('users').get();
     final List<Map<String, dynamic>> postList = [];
+    final currentUserUid = "yourCurrentUserUid"; // Replace with the actual current user UID
 
     for (var userDoc in userCollection.docs) {
       final userData = UserModel.fromDocument(userDoc);
 
       final posts = await FirebaseFirestore.instance
           .collection('blog')
-          .doc(userData.uid) // Access each user's posts
+          .doc(userData.uid)
           .collection('posts')
           .orderBy('timestamp', descending: true)
           .get();
 
       for (var post in posts.docs) {
         final postData = post.data();
+        postData['id'] = post.id; // Add the post ID to the post data
+        postData['hasLiked'] = (postData['likedBy'] as List<dynamic>? ?? []).contains(currentUserUid);
+
         postList.add({
           'post': postData,
           'user': userData,
         });
       }
     }
-
     postList.sort((a, b) => (b['post']['timestamp'] as Timestamp).compareTo(a['post']['timestamp'] as Timestamp));
-
     return postList;
+  }
+
+  Future<void> _toggleLike(String userId, String postId, bool hasLiked) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('blog')
+        .doc(userId)
+        .collection('posts')
+        .doc(postId);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(postRef);
+
+      if (!snapshot.exists) {
+        throw Exception('Post does not exist!');
+      }
+
+      int newLikesCount = (snapshot.data()!['likes'] as int? ?? 0);
+      List<String> likes = List.from(snapshot.data()!['likedBy'] as List<dynamic>? ?? []);
+
+      if (hasLiked) {
+        newLikesCount--;
+        likes.remove(userId);
+      } else {
+        newLikesCount++;
+        likes.add(userId);
+      }
+
+      transaction.update(postRef, {
+        'likes': newLikesCount,
+        'likedBy': likes,
+      });
+    });
   }
 
   // Method to format the time difference
@@ -57,198 +99,250 @@ class _FeedPageState extends State<FeedPage> {
     }
   }
 
+  // Method to translate text
+  Future<void> _translateText(int index, String text, TranslateLanguage targetLanguage) async {
+    setState(() {
+      _translatedText[index] = 'Translating...'; // Indicate the translation process
+    });
+
+    final translator = OnDeviceTranslator(
+      sourceLanguage: TranslateLanguage.english,
+      targetLanguage: targetLanguage,
+    );
+
+    final translation = await translator.translateText(text);
+    setState(() {
+      _translatedText[index] = translation;
+    });
+
+    // Dispose the translator instance after use to free resources
+    translator.close();
+  }
+
+  // Method to share content
+  void _shareContent(String content, String postId) {
+    final String postLink = 'https://yourapp.com/posts/$postId'; // Replace with your app's post link format
+    final String shareContent = '$content\n\nRead more at: $postLink';
+
+    Share.share(shareContent);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _fetchPosts(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+      body: Container(
+        color: Colors.grey[200], // Set the background color of the page
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _fetchPosts(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No posts available'));
-          }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(child: Text('No posts available'));
+            }
 
-          final posts = snapshot.data!;
+            final posts = snapshot.data!;
 
-          return ListView.builder(
-            itemCount: posts.length,
-            itemBuilder: (context, index) {
-              final post = posts[index]['post'];
-              final user = posts[index]['user'] as UserModel;
+            return ListView.builder(
+              itemCount: posts.length,
+              itemBuilder: (context, index) {
+                final post = posts[index]['post'];
+                final user = posts[index]['user'] as UserModel;
 
-              _isExpanded[index] = _isExpanded[index] ?? false;
-              _pageControllers[index] = _pageControllers[index] ?? PageController();
+                _isExpanded[index] = _isExpanded[index] ?? false;
+                _pageControllers[index] = _pageControllers[index] ?? PageController();
 
-              return Card(
-                color: Colors.white, // Set the background color of the card to white
-                margin: EdgeInsets.all(6),
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundImage: user.photoURL.isNotEmpty
-                                ? NetworkImage(user.photoURL)
-                                : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${user.firstName} ${user.lastName}',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  user.position,
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                Text(
-                                  _formatTimeDifference(post['timestamp'] as Timestamp),
-                                  style: TextStyle(fontSize: 10, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                          PopupMenuButton<String>(
-                            icon: Icon(Icons.more_horiz),
-                            onSelected: (value) {
-                              // Handle the selected option
-                            },
-                            itemBuilder: (BuildContext context) {
-                              return [
-                                PopupMenuItem(
-                                  value: 'hindi',
-                                  child: Text('Convert to Hindi'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'tamil',
-                                  child: Text('Convert to Tamil'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'telugu',
-                                  child: Text('Convert to Telugu'),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 2),
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 1), // Super fast duration
-                        curve: Curves.easeInOut,
-                        child: Column(
+                return Card(
+                  color: Colors.white, // Set the background color of the card to white
+                  margin: EdgeInsets.all(6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero, // Remove border radius
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    post['thought'],
-                                    maxLines: _isExpanded[index]! ? null : 1,
-                                    overflow: _isExpanded[index]! ? null : TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 16),
+                            CircleAvatar(
+                              backgroundImage: user.photoURL.isNotEmpty
+                                  ? NetworkImage(user.photoURL)
+                                  : AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${user.firstName} ${user.lastName}',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
-                                ),
-                                if ((post['thought'] as String).length > 100 && !_isExpanded[index]!)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 10.0),
-                                    child: TextButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _isExpanded[index] = !_isExpanded[index]!;
-                                        });
-                                      },
-                                      child: Text(_isExpanded[index]! ? 'See Less' : 'See More'),
+                                  Text(
+                                    user.position,
+                                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                  Text(
+                                    _formatTimeDifference(post['timestamp'] as Timestamp),
+                                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: Icon(Icons.more_horiz),
+                              onSelected: (value) {
+                                TranslateLanguage targetLanguage;
+
+                                switch (value) {
+                                  case 'hindi':
+                                    targetLanguage = TranslateLanguage.hindi;
+                                    break;
+                                  case 'tamil':
+                                    targetLanguage = TranslateLanguage.tamil;
+                                    break;
+                                  case 'telugu':
+                                    targetLanguage = TranslateLanguage.telugu;
+                                    break;
+                                  case 'marathi':
+                                    targetLanguage = TranslateLanguage.marathi;
+                                    break;
+                                  default:
+                                    return;
+                                }
+
+                                _translateText(index, post['thought'], targetLanguage);
+                              },
+                              itemBuilder: (BuildContext context) {
+                                return [
+                                  PopupMenuItem(
+                                    value: 'hindi',
+                                    child: Text('Convert to Hindi'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'tamil',
+                                    child: Text('Convert to Tamil'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'telugu',
+                                    child: Text('Convert to Telugu'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'marathi',
+                                    child: Text('Convert to Marathi'),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 2),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 1), // Super fast duration
+                          curve: Curves.easeInOut,
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _translatedText[index] ?? post['thought'],
+                                      maxLines: _isExpanded[index]! ? null : 1,
+                                      overflow: _isExpanded[index]! ? null : TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: 16),
                                     ),
                                   ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (post['photos'] != null && (post['photos'] as List).isNotEmpty)
-                        Stack(
-                          children: [
-                            Container(
-                              height: 300,
-                              child: PageView.builder(
-                                controller: _pageControllers[index],
-                                itemCount: (post['photos'] as List).length,
-                                itemBuilder: (context, photoIndex) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(4.0),
-                                    child: Image.network(post['photos'][photoIndex]),
-                                  );
-                                },
+                                  if ((post['thought'] as String).length > 100 && !_isExpanded[index]!)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 10.0),
+                                      child: TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _isExpanded[index] = !_isExpanded[index]!;
+                                          });
+                                        },
+                                        child: Text(_isExpanded[index]! ? 'See Less' : 'See More'),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.arrow_back_ios,
-                                  size: 15, // Set the size of the icon
-                                  color: Colors.black, // Set the color of the icon
-                                ),
-                                onPressed: () {
-                                  _pageControllers[index]!.previousPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
-                                },
-                              ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: IconButton(
-                                icon: Icon(Icons.arrow_forward_ios, size: 15, color: Colors.black),
-                                onPressed: () {
-                                  _pageControllers[index]!.nextPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.thumb_up),
-                                  onPressed: () {},
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.comment),
-                                  onPressed: () {},
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        if (post['photos'] != null && (post['photos'] as List).isNotEmpty)
+                          Stack(
+                            children: [
+                              Container(
+                                height: 300,
+                                child: PageView.builder(
+                                  controller: _pageControllers[index],
+                                  itemCount: (post['photos'] as List).length,
+                                  itemBuilder: (context, photoIndex) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                      child: Image.network(
+                                        post['photos'][photoIndex],
+                                        fit: BoxFit.cover,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                            ],
+                          ),
+                        SizedBox(height: 10),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                post['hasLiked'] ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+                                color: post['hasLiked'] ? Colors.blue : Colors.green,
+                              ),
+                              onPressed: () async {
+                                await _toggleLike(user.uid, post['id'], post['hasLiked']);
+                                setState(() {
+                                  post['hasLiked'] = !post['hasLiked'];
+                                  post['likes'] = post['hasLiked']
+                                      ? (post['likes'] as int) + 1
+                                      : (post['likes'] as int) - 1;
+                                });
+                              },
+                            ),
+                            Text('${post['likes']} Likes'),
+                            Spacer(),
+                            IconButton(
+                              icon: Icon(Icons.share),
+                              onPressed: () {
+                                _shareContent(post['thought'], post['id']);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Dispose of PageControllers
+    _pageControllers.forEach((_, controller) => controller.dispose());
+    _onDeviceTranslator.close(); // Dispose of translator instance
+    super.dispose();
   }
 }
