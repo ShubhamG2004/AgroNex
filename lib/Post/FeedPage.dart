@@ -51,37 +51,7 @@ class _FeedPageState extends State<FeedPage> {
     return postList;
   }
 
-  Future<void> _toggleLike(String userId, String postId, bool hasLiked) async {
-    final postRef = FirebaseFirestore.instance
-        .collection('blog')
-        .doc(userId)
-        .collection('posts')
-        .doc(postId);
 
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final snapshot = await transaction.get(postRef);
-
-      if (!snapshot.exists) {
-        throw Exception('Post does not exist!');
-      }
-
-      int newLikesCount = (snapshot.data()!['likes'] as int? ?? 0);
-      List<String> likes = List.from(snapshot.data()!['likedBy'] as List<dynamic>? ?? []);
-
-      if (hasLiked) {
-        newLikesCount--;
-        likes.remove(userId);
-      } else {
-        newLikesCount++;
-        likes.add(userId);
-      }
-
-      transaction.update(postRef, {
-        'likes': newLikesCount,
-        'likedBy': likes,
-      });
-    });
-  }
 
   // Method to format the time difference
   String _formatTimeDifference(Timestamp timestamp) {
@@ -119,6 +89,42 @@ class _FeedPageState extends State<FeedPage> {
     // Dispose the translator instance after use to free resources
     translator.close();
   }
+  Future<void> _toggleLike(String userId, String postId, bool hasLiked) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('blog')
+        .doc(userId)
+        .collection('posts')
+        .doc(postId);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(postRef);
+
+      if (!snapshot.exists) {
+        throw Exception('Post does not exist!');
+      }
+
+      int newLikesCount = (snapshot.data()!['likes'] as int? ?? 0);
+      List<String> likes = List.from(snapshot.data()!['likedBy'] as List<dynamic>? ?? []);
+
+      if (hasLiked) {
+        // If already liked, unlike it
+        newLikesCount--;
+        likes.remove(userId);
+      } else {
+        // If not liked, like it
+        newLikesCount++;
+        likes.add(userId);
+      }
+
+      transaction.update(postRef, {
+        'likes': newLikesCount,
+        'likedBy': likes,
+      });
+    });
+  }
+
+
+
 
   // Method to share content
   void _shareContent(String content, String postId) {
@@ -323,7 +329,8 @@ class _FeedPageState extends State<FeedPage> {
                           ),
                         SizedBox(height: 8),
                         Row(
-                          children: [
+                          children:
+                          [
                             Expanded(
                               child: Row(
                                 children: [
@@ -331,18 +338,34 @@ class _FeedPageState extends State<FeedPage> {
                                     child: IconButton(
                                       icon: Icon(
                                         post['hasLiked'] ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
-                                        color: post['hasLiked'] ? Colors.blue : Colors.grey,
+                                        color: post['hasLiked'] ? Colors.green : Colors.grey,
                                       ),
                                       onPressed: () async {
-                                        await _toggleLike(user.uid, post['id'], post['hasLiked']);
-                                        setState(() {
-                                          post['hasLiked'] = !post['hasLiked'];
-                                          post['likes'] = post['hasLiked']
-                                              ? (post['likes'] as int) + 1
-                                              : (post['likes'] as int) - 1;
-                                        });
+                                        if (!post['hasLiked']) {
+                                          setState(() {
+                                            // Optimistic UI update
+                                            post['hasLiked'] = true;
+                                            post['likes'] = (post['likes'] as int) + 1;
+                                          });
+
+                                          // Perform the actual like operation in the background
+                                          try {
+                                            await _toggleLike(user.uid, post['id'], post['hasLiked']);
+                                          } catch (e) {
+                                            // If there's an error, revert the optimistic UI update
+                                            setState(() {
+                                              post['hasLiked'] = false;
+                                              post['likes'] = (post['likes'] as int) - 1;
+                                            });
+                                          }
+                                        }
                                       },
                                     ),
+                                  ),
+
+                                  Text(
+                                    '${post['likes']} likes', // Display the number of likes
+                                    style: TextStyle(fontSize: 12, color: Colors.grey),
                                   ),
 
                                   Expanded(
