@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_mlkit_translation/google_mlkit_translation.dart'; // Import the translation package
-import 'package:share_plus/share_plus.dart'; // Import the share_plus package
-import '../Connections/user_model.dart'; // Import your UserModel class
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
+import 'package:share_plus/share_plus.dart';
+import '../Connections/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FeedPage extends StatefulWidget {
   @override
@@ -51,8 +52,6 @@ class _FeedPageState extends State<FeedPage> {
     return postList;
   }
 
-
-
   // Method to format the time difference
   String _formatTimeDifference(Timestamp timestamp) {
     final now = DateTime.now();
@@ -89,7 +88,11 @@ class _FeedPageState extends State<FeedPage> {
     // Dispose the translator instance after use to free resources
     translator.close();
   }
+
   Future<void> _toggleLike(String userId, String postId, bool hasLiked) async {
+    // Fetch the current user's UID
+    final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
+
     final postRef = FirebaseFirestore.instance
         .collection('blog')
         .doc(userId)
@@ -103,27 +106,29 @@ class _FeedPageState extends State<FeedPage> {
         throw Exception('Post does not exist!');
       }
 
-      int newLikesCount = (snapshot.data()!['likes'] as int? ?? 0);
-      List<String> likes = List.from(snapshot.data()!['likedBy'] as List<dynamic>? ?? []);
+      List<String> likedBy = List.from(snapshot.data()!['likedBy'] as List<dynamic>? ?? []);
 
       if (hasLiked) {
-        // If already liked, unlike it
-        newLikesCount--;
-        likes.remove(userId);
+        // If currently liked by user, do nothing
+        if (likedBy.contains(currentUserUid)) {
+          return;
+        }
+        likedBy.add(currentUserUid);
       } else {
-        // If not liked, like it
-        newLikesCount++;
-        likes.add(userId);
+        // If not currently liked by user, do nothing
+        if (!likedBy.contains(currentUserUid)) {
+          return;
+        }
+        likedBy.remove(currentUserUid);
       }
 
+      // Update the Firestore document with the updated likedBy list and likes count
       transaction.update(postRef, {
-        'likes': newLikesCount,
-        'likedBy': likes,
+        'likedBy': likedBy,
+        'likes': likedBy.length, // The number of UIDs in the likedBy list represents the likes count
       });
     });
   }
-
-
 
 
   // Method to share content
@@ -306,8 +311,8 @@ class _FeedPageState extends State<FeedPage> {
                                 child: IconButton(
                                   icon: Icon(
                                     Icons.arrow_back_ios,
-                                    size: 15, // Set the size of the icon
-                                    color: Colors.black, // Set the color of the icon
+                                    size: 15,
+                                    color: Colors.black,
                                   ),
                                   onPressed: () {
                                     _pageControllers[index]!.previousPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
@@ -336,28 +341,29 @@ class _FeedPageState extends State<FeedPage> {
                                 children: [
                                   Expanded(
                                     child: IconButton(
-                                      icon: Icon(
-                                        post['hasLiked'] ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
-                                        color: post['hasLiked'] ? Colors.green : Colors.grey,
-                                      ),
+                                      icon: post['hasLiked']
+                                          ? Icon(Icons.thumb_up, color: Colors.green)
+                                          : Icon(Icons.thumb_up_alt_outlined, color: Colors.grey),
                                       onPressed: () async {
-                                        if (!post['hasLiked']) {
-                                          setState(() {
-                                            // Optimistic UI update
-                                            post['hasLiked'] = true;
-                                            post['likes'] = (post['likes'] as int) + 1;
-                                          });
+                                        setState(() {
+                                          // Optimistically update the UI
+                                          post['hasLiked'] = !post['hasLiked'];
+                                          post['likes'] = post['hasLiked']
+                                              ? (post['likes'] ?? 0) + 1
+                                              : (post['likes'] ?? 0) - 1;
+                                        });
 
-                                          // Perform the actual like operation in the background
-                                          try {
-                                            await _toggleLike(user.uid, post['id'], post['hasLiked']);
-                                          } catch (e) {
-                                            // If there's an error, revert the optimistic UI update
-                                            setState(() {
-                                              post['hasLiked'] = false;
-                                              post['likes'] = (post['likes'] as int) - 1;
-                                            });
-                                          }
+                                        try {
+                                          await _toggleLike(user.uid, post['id'], post['hasLiked']);
+                                        } catch (e) {
+                                          // If there's an error, revert the optimistic UI update
+                                          setState(() {
+                                            post['hasLiked'] = !post['hasLiked'];
+                                            post['likes'] = post['hasLiked']
+                                                ? (post['likes'] ?? 0) + 1
+                                                : (post['likes'] ?? 0) - 1;
+                                          });
+                                          print('Error updating like status: $e');
                                         }
                                       },
                                     ),
