@@ -89,10 +89,8 @@ class _FeedPageState extends State<FeedPage> {
     translator.close();
   }
 
-  Future<void> _toggleLike(String userId, String postId, bool hasLiked) async {
-    // Fetch the current user's UID
+  Future<void> _toggleLike(String userId, String postId) async {
     final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
-
     final postRef = FirebaseFirestore.instance
         .collection('blog')
         .doc(userId)
@@ -108,27 +106,19 @@ class _FeedPageState extends State<FeedPage> {
 
       List<String> likedBy = List.from(snapshot.data()!['likedBy'] as List<dynamic>? ?? []);
 
-      if (hasLiked) {
-        // If currently liked by user, do nothing
-        if (likedBy.contains(currentUserUid)) {
-          return;
-        }
-        likedBy.add(currentUserUid);
-      } else {
-        // If not currently liked by user, do nothing
-        if (!likedBy.contains(currentUserUid)) {
-          return;
-        }
+      if (likedBy.contains(currentUserUid)) {
         likedBy.remove(currentUserUid);
+      } else {
+        likedBy.add(currentUserUid);
       }
 
-      // Update the Firestore document with the updated likedBy list and likes count
       transaction.update(postRef, {
         'likedBy': likedBy,
-        'likes': likedBy.length, // The number of UIDs in the likedBy list represents the likes count
+        'likes': likedBy.length,
       });
     });
   }
+
 
 
   // Method to share content
@@ -340,32 +330,51 @@ class _FeedPageState extends State<FeedPage> {
                               child: Row(
                                 children: [
                                   Expanded(
-                                    child: IconButton(
-                                      icon: post['hasLiked']
-                                          ? Icon(Icons.thumb_up, color: Colors.green)
-                                          : Icon(Icons.thumb_up_alt_outlined, color: Colors.grey),
-                                      onPressed: () async {
+                                    child: GestureDetector(
+                                      onTap: () async {
                                         setState(() {
-                                          // Optimistically update the UI
-                                          post['hasLiked'] = !post['hasLiked'];
-                                          post['likes'] = post['hasLiked']
-                                              ? (post['likes'] ?? 0) + 1
-                                              : (post['likes'] ?? 0) - 1;
+                                          if (post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)) {
+                                            post['likedBy'].remove(FirebaseAuth.instance.currentUser!.uid);
+                                            post['likes'] = post['likes'] - 1;
+                                          } else {
+                                            if (post['likedBy'] == null) {
+                                              post['likedBy'] = [FirebaseAuth.instance.currentUser!.uid];
+                                            } else {
+                                              post['likedBy'].add(FirebaseAuth.instance.currentUser!.uid);
+                                            }
+                                            post['likes'] = post['likes'] + 1;
+                                          }
                                         });
 
                                         try {
-                                          await _toggleLike(user.uid, post['id'], post['hasLiked']);
+                                          await _toggleLike(user.uid, post['id']);
                                         } catch (e) {
-                                          // If there's an error, revert the optimistic UI update
                                           setState(() {
-                                            post['hasLiked'] = !post['hasLiked'];
-                                            post['likes'] = post['hasLiked']
-                                                ? (post['likes'] ?? 0) + 1
-                                                : (post['likes'] ?? 0) - 1;
+                                            if (post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)) {
+                                              post['likedBy'].remove(FirebaseAuth.instance.currentUser!.uid);
+                                              post['likes'] = post['likes'] - 1;
+                                            } else {
+                                              if (post['likedBy'] == null) {
+                                                post['likedBy'] = [FirebaseAuth.instance.currentUser!.uid];
+                                              } else {
+                                                post['likedBy'].add(FirebaseAuth.instance.currentUser!.uid);
+                                              }
+                                              post['likes'] = post['likes'] + 1;
+                                            }
                                           });
                                           print('Error updating like status: $e');
                                         }
                                       },
+                                      child: AnimatedScale(
+                                        scale: post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid) ? 1.2 : 1.0,
+                                        duration: Duration(milliseconds: 100),
+                                        child: Icon(
+                                          post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)
+                                              ? Icons.thumb_up
+                                              : Icons.thumb_up_alt_outlined,
+                                          color: post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid) ? Colors.green : Colors.grey,
+                                        ),
+                                      ),
                                     ),
                                   ),
 

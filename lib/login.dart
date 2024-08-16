@@ -132,7 +132,6 @@ class _LoginState extends State<Login> {
         'email': user.email,
         'number': '',
         'address': '',
-        // Add any additional fields you want to save
       });
 
       // Initialize collections for the new user
