@@ -7,6 +7,13 @@ import 'Connections/ConnectionsPage.dart';
 import 'Message/MessageListPage.dart';
 import './Post/PostPage.dart';
 import './Post/FeedPage.dart';
+import './PlantDiagnosis/PlantDiagnosis.dart';
+import 'package:flutter/material.dart';
+
+
+
+
+
 
 class Homepage extends StatefulWidget {
   const Homepage({Key? key}) : super(key: key);
@@ -187,8 +194,24 @@ class _HomepageState extends State<Homepage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _signOut,
-        child: Icon(Icons.logout),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => PlantDiagnosis()), // Redirect to PlantDiagnosis page
+          );
+        },
+        mini: true,
+        shape: const CircleBorder(),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/camera.png',
+            fit: BoxFit.cover, // Ensures the image fits nicely
+            width: 40, // Adjust the size of the image
+            height: 40, // Adjust the size of the image
+          ),
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

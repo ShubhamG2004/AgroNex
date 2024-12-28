@@ -13,20 +13,17 @@ class FeedPage extends StatefulWidget {
 class _FeedPageState extends State<FeedPage> {
   Map<int, bool> _isExpanded = {};
   Map<int, PageController> _pageControllers = {};
-  Map<int, String> _translatedText = {}; // Store translated text for each post
+  Map<int, String> _translatedText = {};
 
   late final OnDeviceTranslator _onDeviceTranslator = OnDeviceTranslator(
     sourceLanguage: TranslateLanguage.english,
-    targetLanguage: TranslateLanguage.hindi, // Default language
+    targetLanguage: TranslateLanguage.hindi,
   );
 
-  // Method to fetch posts and user data
-  // Method to fetch posts and user data
   Future<List<Map<String, dynamic>>> _fetchPosts() async {
     final userCollection = await FirebaseFirestore.instance.collection('users').get();
     final List<Map<String, dynamic>> postList = [];
-    final currentUserUid = "yourCurrentUserUid"; // Replace with the actual current user UID
-
+    final currentUserUid = "yourCurrentUserUid";
     for (var userDoc in userCollection.docs) {
       final userData = UserModel.fromDocument(userDoc);
 
@@ -324,85 +321,70 @@ class _FeedPageState extends State<FeedPage> {
                           ),
                         SizedBox(height: 8),
                         Row(
-                          children:
-                          [
+                          children: [
+                            IconButton(
+                              icon: post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)
+                                  ? Icon(Icons.thumb_up, color: Colors.green)
+                                  : Icon(Icons.thumb_up_alt_outlined, color: Colors.grey),
+                              onPressed: () async {
+                                setState(() {
+                                  // Optimistically update the UI
+                                  if (post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)) {
+                                    post['likedBy'].remove(FirebaseAuth.instance.currentUser!.uid);
+                                    post['likes'] = post['likes'] - 1;
+                                  } else {
+                                    if (post['likedBy'] == null) {
+                                      post['likedBy'] = [FirebaseAuth.instance.currentUser!.uid];
+                                    } else {
+                                      post['likedBy'].add(FirebaseAuth.instance.currentUser!.uid);
+                                    }
+                                    post['likes'] = post['likes'] + 1;
+                                  }
+                                });
+
+                                try {
+                                  await _toggleLike(user.uid, post['id']);
+                                } catch (e) {
+                                  // If there's an error, revert the optimistic UI update
+                                  setState(() {
+                                    if (post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)) {
+                                      post['likedBy'].remove(FirebaseAuth.instance.currentUser!.uid);
+                                      post['likes'] = post['likes'] - 1;
+                                    } else {
+                                      if (post['likedBy'] == null) {
+                                        post['likedBy'] = [FirebaseAuth.instance.currentUser!.uid];
+                                      } else {
+                                        post['likedBy'].add(FirebaseAuth.instance.currentUser!.uid);
+                                      }
+                                      post['likes'] = post['likes'] + 1;
+                                    }
+                                  });
+                                  print('Error updating like status: $e');
+                                }
+                              },
+                            ),
+                            Text(
+                              '${post['likes']} likes', // Display the number of likes
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
                             Expanded(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () async {
-                                        setState(() {
-                                          if (post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)) {
-                                            post['likedBy'].remove(FirebaseAuth.instance.currentUser!.uid);
-                                            post['likes'] = post['likes'] - 1;
-                                          } else {
-                                            if (post['likedBy'] == null) {
-                                              post['likedBy'] = [FirebaseAuth.instance.currentUser!.uid];
-                                            } else {
-                                              post['likedBy'].add(FirebaseAuth.instance.currentUser!.uid);
-                                            }
-                                            post['likes'] = post['likes'] + 1;
-                                          }
-                                        });
-
-                                        try {
-                                          await _toggleLike(user.uid, post['id']);
-                                        } catch (e) {
-                                          setState(() {
-                                            if (post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)) {
-                                              post['likedBy'].remove(FirebaseAuth.instance.currentUser!.uid);
-                                              post['likes'] = post['likes'] - 1;
-                                            } else {
-                                              if (post['likedBy'] == null) {
-                                                post['likedBy'] = [FirebaseAuth.instance.currentUser!.uid];
-                                              } else {
-                                                post['likedBy'].add(FirebaseAuth.instance.currentUser!.uid);
-                                              }
-                                              post['likes'] = post['likes'] + 1;
-                                            }
-                                          });
-                                          print('Error updating like status: $e');
-                                        }
-                                      },
-                                      child: AnimatedScale(
-                                        scale: post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid) ? 1.2 : 1.0,
-                                        duration: Duration(milliseconds: 100),
-                                        child: Icon(
-                                          post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid)
-                                              ? Icons.thumb_up
-                                              : Icons.thumb_up_alt_outlined,
-                                          color: post['likedBy'] != null && post['likedBy'].contains(FirebaseAuth.instance.currentUser!.uid) ? Colors.green : Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                  Text(
-                                    '${post['likes']} likes', // Display the number of likes
-                                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-
-                                  Expanded(
-                                    child: IconButton(
-                                      icon: Icon(Icons.comment),
-                                      onPressed: () {},
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: IconButton(
-                                      icon: Icon(Icons.share),
-                                      onPressed: () {
-                                        final postId = post['id']; // Get the post ID
-                                        _shareContent(post['thought'], postId);
-                                      },
-                                    ),
-                                  ),
-                                ],
+                              child: IconButton(
+                                icon: Icon(Icons.comment),
+                                onPressed: () {},
+                              ),
+                            ),
+                            Expanded(
+                              child: IconButton(
+                                icon: Icon(Icons.share),
+                                onPressed: () {
+                                  final postId = post['id']; // Get the post ID
+                                  _shareContent(post['thought'], postId);
+                                },
                               ),
                             ),
                           ],
                         ),
+
                       ],
                     ),
                   ),

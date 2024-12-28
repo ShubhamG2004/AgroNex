@@ -1,63 +1,46 @@
 plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
-    id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
-}
-
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader("UTF-8") { reader ->
-        localProperties.load(reader)
-    }
-}
-
-def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
-if (flutterVersionCode == null) {
-    flutterVersionCode = "1"
-}
-
-def flutterVersionName = localProperties.getProperty("flutter.versionName")
-if (flutterVersionName == null) {
-    flutterVersionName = "1.0"
+    id "com.android.application"  // Android application plugin
+    id "kotlin-android"  // Kotlin Android plugin
+    id "com.google.gms.google-services"  // Firebase plugin (applies the Google Services plugin)
+    id "dev.flutter.flutter-gradle-plugin"  // Flutter Gradle plugin (if using Flutter)
 }
 
 android {
-    namespace = "com.example.agronex"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
+    namespace = "com.example.agronex"  // Your app's namespace
+    compileSdk = 34  // Adjust to the required SDK version for your project
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.agronex"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdk = 23
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutterVersionCode.toInteger()
-        versionName = flutterVersionName
-        multiDexEnabled = true
+        applicationId = "com.example.agronex"  // Unique application ID
+        minSdk = 23  // Minimum SDK version
+        targetSdk = 34  // Target SDK version
+        versionCode = 1  // Version code for the app
+        versionName = "1.0"  // Version name for the app
+    }
+    ndkVersion = "25.1.8937393"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17  // Set Java source compatibility to Java 17
+        targetCompatibility JavaVersion.VERSION_17  // Set Java target compatibility to Java 17
+    }
+
+    kotlin {
+        jvmToolchain(17)  // Specify Kotlin JVM toolchain to use Java 17
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.debug  // Use debug signing for now, replace with your own for release
         }
     }
 }
 
-flutter {
-    source = "../.."
-}
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:33.1.0')
+    implementation platform('com.google.firebase:firebase-bom:33.1.0')  // Firebase BOM for Firebase SDK version management
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"  // Kotlin standard library
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = "17"  // Align Kotlin JVM target with Java 17
+    }
 }

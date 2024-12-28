@@ -4,8 +4,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
 import 'wrapper.dart';
 import 'login.dart';
+import 'consts.dart';
+
+
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(const MyApp());
