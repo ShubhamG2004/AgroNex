@@ -1,141 +1,171 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+// import 'api_service.dart';
+import 'api_constants.dart';
+class ImageChat extends StatefulWidget {
+  const ImageChat({super.key});
 
-class PlantDiseaseDetect extends StatefulWidget {
   @override
-  _PlantDiseaseDetectState createState() => _PlantDiseaseDetectState();
+  State<ImageChat> createState() => _ImageChatState();
 }
 
-class _PlantDiseaseDetectState extends State<PlantDiseaseDetect> {
-  File? _image;
-  final ImagePicker _picker = ImagePicker();
-  String? _diseaseName;
-  bool _isLoading = false;
+class _ImageChatState extends State<ImageChat> {
+  XFile? pickedImage;
+  String mytext = '';
+  bool scanning = false;
+  TextEditingController prompt = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+  // Corrected API URL for Gemini 1.5 Flash
+  final apiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${api_constants.apiKey}';
 
-    if (pickedFile != null) {
+  final header = {
+    'Content-Type': 'application/json',
+  };
+
+  getImage(ImageSource ourSource) async {
+    XFile? result = await _imagePicker.pickImage(source: ourSource);
+    if (result != null) {
       setState(() {
-        _image = File(pickedFile.path);
-        _diseaseName = null; // Reset the previous result
+        pickedImage = result;
       });
     }
   }
 
-  Future<void> _detectDisease() async {
-    if (_image == null) return;
+  getdata(XFile? image, String promptValue) async {
+    if (image == null) {
+      setState(() {
+        mytext = 'Please select an image first!';
+      });
+      return;
+    }
 
     setState(() {
-      _isLoading = true;
+      scanning = true;
+      mytext = '';
     });
 
-    final apiUrl = "https://plant.id/api/v3/health_assessment";
-    final apiKey = "U6Am7OtQVPPAg4JocQTPNfEu1b1bmwljeyVMCqgN0cl7dRqka4"; // Replace with your API key
-
     try {
-      // Convert the image to base64
-      final bytes = await _image!.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      // Read image and convert to base64
+      List<int> imageBytes = await File(image.path).readAsBytes();
+      String base64File = base64Encode(imageBytes);
 
-      // Create the request payload (remove 'similar_images' modifier)
-      final payload = {
-        "images": ["data:image/jpg;base64,$base64Image"],
-        "latitude": 49.207,
-        "longitude": 16.608,
-        "health": "only"
+      // Corrected JSON format for Gemini 1.5 Flash
+      final data = {
+        "contents": [
+          {
+            "parts": [
+              {"text": promptValue},
+              {
+                "inline_data": {
+                  "mime_type": "image/jpeg",
+                  "data": base64File
+                }
+              }
+            ]
+          }
+        ]
       };
 
-      // Send the POST request
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          "Content-Type": "application/json",
-          "Api-Key": apiKey,
-        },
-        body: jsonEncode(payload),
-      );
+      final response = await http.post(Uri.parse(apiUrl), headers: header, body: jsonEncode(data));
 
       if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        final suggestions = result['result']['disease']['suggestions'];
-
-        setState(() {
-          if (suggestions != null && suggestions.isNotEmpty) {
-            _diseaseName = suggestions[0]['name'];
-          } else {
-            _diseaseName = 'No disease detected';
-          }
-        });
+        var result = jsonDecode(response.body);
+        mytext = result['candidates'][0]['content']['parts'][0]['text'];
       } else {
-        setState(() {
-          _diseaseName = "Error: ${response.body}";
-        });
+        mytext = 'Response error: ${response.statusCode}\n${response.body}';
       }
     } catch (e) {
-      setState(() {
-        _diseaseName = "An error occurred: $e";
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      mytext = 'Error: $e';
     }
+
+    setState(() {
+      scanning = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Plant Disease Detection'),
+        title: const Text(
+          'Disease Diagnosis',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.black,
+        actions: [
+          IconButton(
+            onPressed: () {
+              getImage(ImageSource.gallery);
+            },
+            icon: const Icon(Icons.photo, color: Colors.white),
+          ),
+          const SizedBox(width: 10),
+        ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        padding: const EdgeInsets.all(20.0),
+        child: ListView(
           children: [
-            if (_image != null)
-              Image.file(
-                _image!,
-                height: 200,
-                width: 200,
-                fit: BoxFit.cover,
-              )
-            else
-              Container(
-                height: 200,
-                width: 200,
-                color: Colors.grey[300],
-                child: Center(
-                  child: Text('No Image Selected'),
+            pickedImage == null
+                ? Container(
+              height: 340,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20.0),
+                border: Border.all(color: Colors.black, width: 2.0),
+              ),
+              child: const Center(
+                child: Text('No Image Selected', style: TextStyle(fontSize: 22)),
+              ),
+            )
+                : Container(
+              height: 340,
+              child: Center(
+                child: Image.file(File(pickedImage!.path), height: 400),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: prompt,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: const BorderSide(color: Colors.black, width: 2.0),
+                ),
+                prefixIcon: const Icon(Icons.pending_sharp, color: Colors.black),
+                hintText: 'Enter your prompt here',
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                getdata(pickedImage, prompt.text);
+              },
+              icon: const Icon(Icons.generating_tokens_rounded, color: Colors.white),
+              label: const Padding(
+                padding: EdgeInsets.all(10),
+                child: Text(
+                  'Generate Answer',
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _pickImage,
-              child: Text('Pick Image'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
             ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _image != null && !_isLoading ? _detectDisease : null,
-              child: _isLoading
-                  ? SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-                  : Text('Detect Disease'),
-            ),
-            SizedBox(height: 16),
-            if (_diseaseName != null)
-              Text(
-                'Disease: $_diseaseName',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
+            const SizedBox(height: 30),
+            scanning
+                ? const Padding(
+              padding: EdgeInsets.only(top: 60),
+              child: Center(child: SpinKitThreeBounce(color: Colors.black, size: 20)),
+            )
+                : Text(mytext, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20)),
           ],
         ),
       ),

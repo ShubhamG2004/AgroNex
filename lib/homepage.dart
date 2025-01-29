@@ -194,7 +194,7 @@ class _HomepageState extends State<Homepage> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => PlantDiseaseDetect()), // Redirect to PlantDiagnosis page
+            MaterialPageRoute(builder: (context) => ImageChat()), // Redirect to PlantDiagnosis page
           );
         },
         mini: true,
