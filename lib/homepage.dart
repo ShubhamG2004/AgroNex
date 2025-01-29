@@ -12,9 +12,6 @@ import 'package:flutter/material.dart';
 
 
 
-
-
-
 class Homepage extends StatefulWidget {
   const Homepage({Key? key}) : super(key: key);
 
@@ -197,7 +194,7 @@ class _HomepageState extends State<Homepage> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => PlantDiagnosis()), // Redirect to PlantDiagnosis page
+            MaterialPageRoute(builder: (context) => PlantDiseaseDetect()), // Redirect to PlantDiagnosis page
           );
         },
         mini: true,
@@ -207,9 +204,9 @@ class _HomepageState extends State<Homepage> {
         child: ClipOval(
           child: Image.asset(
             'assets/images/camera.png',
-            fit: BoxFit.cover, // Ensures the image fits nicely
-            width: 40, // Adjust the size of the image
-            height: 40, // Adjust the size of the image
+            fit: BoxFit.cover,
+            width: 40,
+            height: 40,
           ),
         ),
       ),
@@ -217,7 +214,7 @@ class _HomepageState extends State<Homepage> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border(
-            top: BorderSide(color: Colors.grey, width: 0.5), // Top border
+            top: BorderSide(color: Colors.grey, width: 0.5),
           ),
         ),
         child: BottomNavigationBar(

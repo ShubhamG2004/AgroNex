@@ -1,276 +1,143 @@
+import 'dart:convert';
 import 'dart:io';
-import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
-import 'api_service.dart';
-import 'constants.dart';
-
-class PlantDiagnosis extends StatefulWidget {
-  const PlantDiagnosis({super.key});
-
+class PlantDiseaseDetect extends StatefulWidget {
   @override
-  State<PlantDiagnosis> createState() => _PlantDiagnosisState();
+  _PlantDiseaseDetectState createState() => _PlantDiseaseDetectState();
 }
 
-class _PlantDiagnosisState extends State<PlantDiagnosis> {
-  final apiService = ApiService();
-  File? _selectedImage;
-  String diseaseName = '';
-  String diseasePrecautions = '';
-  bool detecting = false;
-  bool precautionLoading = false;
+class _PlantDiseaseDetectState extends State<PlantDiseaseDetect> {
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
+  String? _diseaseName;
+  bool _isLoading = false;
 
-  Future<void> _pickImage(ImageSource source) async {
-    final pickedFile =
-    await ImagePicker().pickImage(source: source, imageQuality: 50);
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+
     if (pickedFile != null) {
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        _image = File(pickedFile.path);
+        _diseaseName = null; // Reset the previous result
       });
     }
   }
 
-  detectDisease() async {
-    setState(() {
-      detecting = true;
-    });
-    try {
-      diseaseName = await apiService.sendImageToGPT4Vision(image: _selectedImage!);
-    } catch (error) {
-      _showErrorSnackBar(error);
-    } finally {
-      setState(() {
-        detecting = false;
-      });
-    }
-  }
+  Future<void> _detectDisease() async {
+    if (_image == null) return;
 
-  showPrecautions() async {
     setState(() {
-      precautionLoading = true;
+      _isLoading = true;
     });
+
+    final apiUrl = "https://plant.id/api/v3/health_assessment";
+    final apiKey = "U6Am7OtQVPPAg4JocQTPNfEu1b1bmwljeyVMCqgN0cl7dRqka4"; // Replace with your API key
+
     try {
-      if (diseasePrecautions == '') {
-        diseasePrecautions = await apiService.sendMessageGPT(diseaseName: diseaseName);
+      // Convert the image to base64
+      final bytes = await _image!.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      // Create the request payload (remove 'similar_images' modifier)
+      final payload = {
+        "images": ["data:image/jpg;base64,$base64Image"],
+        "latitude": 49.207,
+        "longitude": 16.608,
+        "health": "only"
+      };
+
+      // Send the POST request
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          "Content-Type": "application/json",
+          "Api-Key": apiKey,
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        final suggestions = result['result']['disease']['suggestions'];
+
+        setState(() {
+          if (suggestions != null && suggestions.isNotEmpty) {
+            _diseaseName = suggestions[0]['name'];
+          } else {
+            _diseaseName = 'No disease detected';
+          }
+        });
+      } else {
+        setState(() {
+          _diseaseName = "Error: ${response.body}";
+        });
       }
-      _showSuccessDialog(diseaseName, diseasePrecautions);
-    } catch (error) {
-      _showErrorSnackBar(error);
+    } catch (e) {
+      setState(() {
+        _diseaseName = "An error occurred: $e";
+      });
     } finally {
       setState(() {
-        precautionLoading = false;
+        _isLoading = false;
       });
     }
-  }
-
-  void _showErrorSnackBar(Object error) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error.toString()),
-      backgroundColor: Colors.red,
-    ));
-  }
-
-  void _showSuccessDialog(String title, String content) {
-    AwesomeDialog(
-      context: context,
-      dialogType: DialogType.success,
-      animType: AnimType.rightSlide,
-      title: title,
-      desc: content,
-      btnOkText: 'Got it',
-      btnOkColor: themeColor,
-      btnOkOnPress: () {},
-    ).show();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: <Widget>[
-          const SizedBox(height: 20),
-          Stack(
-            children: [
+      appBar: AppBar(
+        title: Text('Plant Disease Detection'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (_image != null)
+              Image.file(
+                _image!,
+                height: 200,
+                width: 200,
+                fit: BoxFit.cover,
+              )
+            else
               Container(
-                height: MediaQuery.of(context).size.height * 0.23,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(50.0),
-                  ),
-                  color: themeColor,
+                height: 200,
+                width: 200,
+                color: Colors.grey[300],
+                child: Center(
+                  child: Text('No Image Selected'),
                 ),
               ),
-              Container(
-                height: MediaQuery.of(context).size.height * 0.2,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(50.0),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(2, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: <Widget>[
-                    ElevatedButton(
-                      onPressed: () {
-                        _pickImage(ImageSource.gallery);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'OPEN GALLERY',
-                            style: TextStyle(color: textColor),
-                          ),
-                          const SizedBox(width: 10),
-                          Icon(
-                            Icons.image,
-                            color: textColor,
-                          )
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        _pickImage(ImageSource.camera);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('START CAMERA',
-                              style: TextStyle(color: textColor)),
-                          const SizedBox(width: 10),
-                          Icon(Icons.camera_alt, color: textColor)
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          _selectedImage == null
-              ? Container(
-            height: MediaQuery.of(context).size.height * 0.3,
-            child: Image.asset('assets/images/detectionlogo.png'),
-          )
-              : Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-              padding: const EdgeInsets.all(20),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.file(
-                  _selectedImage!,
-                  fit: BoxFit.cover,
-                ),
-              ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _pickImage,
+              child: Text('Pick Image'),
             ),
-          ),
-          if (_selectedImage != null)
-            detecting
-                ? SpinKitWave(
-              color: themeColor,
-              size: 30,
-            )
-                : Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                onPressed: () {
-                  detectDisease();
-                },
-                child: const Text(
-                  'DETECT',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _image != null && !_isLoading ? _detectDisease : null,
+              child: _isLoading
+                  ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : Text('Detect Disease'),
+            ),
+            SizedBox(height: 16),
+            if (_diseaseName != null)
+              Text(
+                'Disease: $_diseaseName',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-            ),
-          if (diseaseName != '')
-            Column(
-              children: [
-                Container(
-                  height: MediaQuery.of(context).size.height * 0.5,
-                  padding: EdgeInsets.symmetric(vertical: 0, horizontal: 20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      DefaultTextStyle(
-                        style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16),
-                        child: AnimatedTextKit(
-                            isRepeatingAnimation: false,
-                            repeatForever: false,
-                            displayFullTextOnTap: true,
-                            totalRepeatCount: 1,
-                            animatedTexts: [
-                              TyperAnimatedText(
-                                diseaseName.trim(),
-                              ),
-                            ]),
-                      )
-                    ],
-                  ),
-                ),
-                precautionLoading
-                    ? const SpinKitWave(
-                  color: Colors.blue,
-                  size: 30,
-                )
-                    : ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                  ),
-                  onPressed: () {
-                    showPrecautions();
-                  },
-                  child: Text(
-                    'PRECAUTION',
-                    style: TextStyle(
-                      color: textColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 30),
-        ],
+          ],
+        ),
       ),
     );
   }
