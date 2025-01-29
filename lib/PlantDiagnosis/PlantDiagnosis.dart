@@ -50,11 +50,9 @@ class _ImageChatState extends State<ImageChat> {
     });
 
     try {
-      // Read image and convert to base64
       List<int> imageBytes = await File(image.path).readAsBytes();
       String base64File = base64Encode(imageBytes);
 
-      // Corrected JSON format for Gemini 1.5 Flash
       final data = {
         "contents": [
           {
